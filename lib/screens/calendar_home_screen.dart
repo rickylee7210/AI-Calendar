@@ -574,100 +574,105 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        color: Colors.black.withValues(alpha: 0.05),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          // 左侧色条
-          Container(
-            width: 3,
-            height: 42,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(2),
-              color: item.type == ItemType.reminder
-                  ? const Color(0xFFFF9500)
-                  : const Color(0xFF3482FF),
-            ),
+    return AnimatedOpacity(
+      opacity: item.isCompleted ? 0.4 : 1.0,
+      duration: const Duration(milliseconds: 150),
+      child: AnimatedScale(
+        scale: item.isCompleted ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 150),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: Colors.black.withValues(alpha: 0.05),
           ),
-          const SizedBox(width: 12),
-          // 内容
-          Expanded(
-            child: Opacity(
-              opacity: item.isCompleted ? 0.4 : 1.0,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(
-                      fontFamily: 'MiSans',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black.withValues(alpha: 0.87),
-                      decoration: item.isCompleted ? TextDecoration.lineThrough : null,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              // 左侧色条
+              Container(
+                width: 3,
+                height: 42,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: item.type == ItemType.reminder
+                      ? const Color(0xFFFF9500)
+                      : const Color(0xFF3482FF),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // 内容
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: TextStyle(
+                        fontFamily: 'MiSans',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black.withValues(alpha: 0.87),
+                        decoration: item.isCompleted ? TextDecoration.lineThrough : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      if (_timeRange.isNotEmpty) ...[
-                        Icon(Icons.access_time, size: 13,
-                            color: Colors.black.withValues(alpha: 0.45)),
-                        const SizedBox(width: 4),
-                        Text(
-                          _timeRange,
-                          style: TextStyle(
-                            fontFamily: 'MiSans', fontSize: 13,
-                            color: Colors.black.withValues(alpha: 0.5),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (_timeRange.isNotEmpty) ...[
+                          Icon(Icons.access_time, size: 13,
+                              color: Colors.black.withValues(alpha: 0.45)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _timeRange,
+                            style: TextStyle(
+                              fontFamily: 'MiSans', fontSize: 13,
+                              color: Colors.black.withValues(alpha: 0.5),
+                            ),
                           ),
-                        ),
+                        ],
+                        if (_timeRange.isNotEmpty && _reminderText.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text('·', style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.black.withValues(alpha: 0.3),
+                            )),
+                          ),
+                        if (_reminderText.isNotEmpty)
+                          Text(
+                            _reminderText,
+                            style: TextStyle(
+                              fontFamily: 'MiSans', fontSize: 13,
+                              color: Colors.black.withValues(alpha: 0.5),
+                            ),
+                          ),
                       ],
-                      if (_timeRange.isNotEmpty && _reminderText.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('·', style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.black.withValues(alpha: 0.3),
-                          )),
-                        ),
-                      if (_reminderText.isNotEmpty)
-                        Text(
-                          _reminderText,
-                          style: TextStyle(
-                            fontFamily: 'MiSans', fontSize: 13,
-                            color: Colors.black.withValues(alpha: 0.5),
-                          ),
-                        ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              // 完成按钮
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: Checkbox(
+                  value: item.isCompleted,
+                  onChanged: (_) => onToggle(),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                ],
+                  side: BorderSide(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
-            ),
+            ],
           ),
-          // 完成按钮
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: Checkbox(
-              value: item.isCompleted,
-              onChanged: (_) => onToggle(),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-              side: BorderSide(
-                color: Colors.black.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
