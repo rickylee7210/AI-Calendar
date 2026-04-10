@@ -20,11 +20,11 @@ void main() async {
   final db = CalendarDbService();
   await db.init();
 
-  // ASR: 智谱（支持音频输入）
-  const zhipuKey = '84a93fd3afdd48fb8cc6780c16374ff1.KUHRgnNuXAH9v6ej';
-  final asr = ZhipuAsrService(apiKey: zhipuKey);
+  // API keys 从 .env 文件读取（flutter run --dart-define-from-file=.env）
+  const zhipuKey = String.fromEnvironment('ZHIPU_API_KEY');
+  const mifyKey = String.fromEnvironment('MIFY_API_KEY');
 
-  // NLU: 智谱 GLM-4-flash（快速，免费）
+  final asr = ZhipuAsrService(apiKey: zhipuKey);
   final nlu = ZhipuNluService(apiKey: zhipuKey);
 
   runApp(
