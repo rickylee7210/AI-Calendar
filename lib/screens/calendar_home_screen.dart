@@ -399,101 +399,98 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     ]);
   }
 
-  void _showCreateItem(BuildContext context) {
+  void _showSpringSheet({
+    required BuildContext context,
+    required Widget Function(BuildContext ctx, VoidCallback close) builder,
+    double barrierOpacity = 0.2,
+    Offset beginOffset = const Offset(0, 1),
+  }) {
     showGeneralDialog(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'CreateItem',
-      barrierColor: Colors.black.withValues(alpha: 0.1),
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (_, anim, __, child) {
-        return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
-          child: child,
-        );
-      },
-      pageBuilder: (ctx, _, __) {
+      barrierDismissible: false,
+      barrierLabel: 'SpringSheet',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 250),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final forwardCurve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        final reverseCurve = CurvedAnimation(parent: anim, curve: Curves.easeInCubic);
+        final curvedAnim = anim.status == AnimationStatus.reverse ? reverseCurve : forwardCurve;
+        final slideOffset = Tween<Offset>(begin: beginOffset, end: Offset.zero).animate(curvedAnim);
         return Stack(
           children: [
-            // Tap barrier to close
-            Positioned.fill(
+            // 遮罩
+            FadeTransition(
+              opacity: anim.drive(Tween(begin: 0.0, end: 1.0)),
               child: GestureDetector(
                 onTap: () => Navigator.pop(ctx),
                 behavior: HitTestBehavior.opaque,
-                child: const SizedBox.expand(),
+                child: Container(color: Colors.black.withValues(alpha: barrierOpacity)),
               ),
             ),
-            // Drawer: top 100dp to bottom
-            Positioned(
-              top: 100,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Material(
-                color: Colors.transparent,
-                child: CreateItemModal(
-                  selectedDate: _selectedDate,
-                  onClose: () => Navigator.pop(ctx),
-                  onSave: (item) async {
-                    Navigator.pop(ctx);
-                    final provider = context.read<VoiceInputProvider>();
-                    await provider.db.insert(item);
-                    _loadItems();
-                  },
-                ),
+            // 内容
+            SlideTransition(
+              position: slideOffset,
+              child: _DraggableSheet(
+                onClose: () => Navigator.pop(ctx),
+                child: builder(ctx, () => Navigator.pop(ctx)),
               ),
             ),
           ],
+        );
+      },
+      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showCreateItem(BuildContext context) {
+    _showSpringSheet(
+      context: context,
+      beginOffset: const Offset(0, 1),
+      barrierOpacity: 0.1,
+      builder: (ctx, close) {
+        return Positioned(
+          top: 100,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Material(
+            color: Colors.transparent,
+            child: CreateItemModal(
+              selectedDate: _selectedDate,
+              onClose: close,
+              onSave: (item) async {
+                close();
+                final provider = context.read<VoiceInputProvider>();
+                await provider.db.insert(item);
+                _loadItems();
+              },
+            ),
+          ),
         );
       },
     );
   }
 
   void _showCalendarPicker(BuildContext context) {
-    showGeneralDialog(
+    _showSpringSheet(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'CalendarPicker',
-      barrierColor: Colors.black.withValues(alpha: 0.2),
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (_, anim, __, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
-          child: child,
-        );
-      },
-      pageBuilder: (ctx, _, __) {
-        return Stack(
-          children: [
-            // Tap outside to close
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox.expand(),
-              ),
+      beginOffset: const Offset(0, 0.3),
+      barrierOpacity: 0.2,
+      builder: (ctx, close) {
+        return Positioned(
+          left: 16,
+          right: 16,
+          bottom: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: CalendarPickerModal(
+              initialDate: _selectedDate,
+              onDateSelected: (date) {
+                close();
+                _onDateChanged(date);
+              },
             ),
-            // Floating card
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Material(
-                color: Colors.transparent,
-                child: CalendarPickerModal(
-                  initialDate: _selectedDate,
-                  onDateSelected: (date) {
-                    Navigator.pop(ctx);
-                    _onDateChanged(date);
-                  },
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -517,6 +514,38 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _DraggableSheet extends StatefulWidget {
+  final VoidCallback onClose;
+  final Widget child;
+  const _DraggableSheet({required this.onClose, required this.child});
+  @override
+  State<_DraggableSheet> createState() => _DraggableSheetState();
+}
+
+class _DraggableSheetState extends State<_DraggableSheet> {
+  double _dragOffset = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Transform.translate(
+      offset: Offset(0, _dragOffset.clamp(0, double.infinity)),
+      child: GestureDetector(
+        onVerticalDragUpdate: (d) {
+          setState(() => _dragOffset += d.delta.dy);
+        },
+        onVerticalDragEnd: (d) {
+          if (_dragOffset > 100 || (d.primaryVelocity ?? 0) > 500) {
+            widget.onClose();
+          } else {
+            setState(() => _dragOffset = 0);
+          }
+        },
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 /// 日程/提醒卡片 — 显示时间段和提醒信息
