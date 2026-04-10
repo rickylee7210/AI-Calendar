@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/calendar_item.dart';
 import '../services/interfaces.dart';
 import '../services/connectivity_service.dart';
+import '../services/notification_service.dart';
 
 enum VoiceInputState {
   idle,
@@ -113,8 +114,16 @@ class VoiceInputProvider extends ChangeNotifier {
       final result = await _nlu.parse(text);
 
       final item = CalendarItem.fromNluResult(result.extractedFields);
-      await _db.insert(item);
+      final insertedId = await _db.insert(item);
       _lastSavedDate = item.dateTime;
+
+      // 注册系统通知提醒（失败不阻断保存）
+      if (item.type != ItemType.todo && item.dateTime != null) {
+        final savedItem = item.copyWith(id: insertedId);
+        try {
+          await NotificationService().scheduleReminder(savedItem);
+        } catch (_) {}
+      }
 
       _lastSaveSuccess = true;
       _state = VoiceInputState.idle;

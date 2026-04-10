@@ -103,16 +103,21 @@ class _CreateItemModalState extends State<CreateItemModal> {
     );
   }
 
-  /// 拖拽手柄 — 60x3 灰条
+  /// 拖拽手柄 — 60x3 灰条，下滑关闭
   Widget _buildHandle() {
-    return Container(
-      height: 24,
-      alignment: Alignment.center,
+    return GestureDetector(
+      onVerticalDragEnd: (d) {
+        if ((d.primaryVelocity ?? 0) > 200) widget.onClose?.call();
+      },
       child: Container(
-        width: 60, height: 3,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(3),
+        height: 24,
+        alignment: Alignment.center,
+        child: Container(
+          width: 60, height: 3,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(3),
+          ),
         ),
       ),
     );

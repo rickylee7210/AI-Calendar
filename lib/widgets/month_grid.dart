@@ -57,9 +57,6 @@ class _DayGridCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final opacity = day.isCurrentMonth ? 1.0 : 0.14;
     final textColor = Colors.black.withValues(alpha: opacity);
-    final lunarColor = day.isCurrentMonth
-        ? Colors.black.withValues(alpha: 0.6)
-        : Colors.black.withValues(alpha: 0.14);
 
     return GestureDetector(
       onTap: onTap,
@@ -87,15 +84,6 @@ class _DayGridCell extends StatelessWidget {
                     fontWeight: FontWeight.w400, color: textColor,
                     height: 1.2,
                   ),
-                ),
-                Text(
-                  day.lunarText,
-                  style: TextStyle(
-                    fontFamily: 'MiSans', fontSize: 10.31,
-                    fontWeight: FontWeight.w400, color: lunarColor,
-                    height: 1.2,
-                  ),
-                  maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

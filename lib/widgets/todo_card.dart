@@ -54,7 +54,7 @@ class _TodoCardState extends State<TodoCard>
               height: 70,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withValues(alpha: 0.03),
               ),
               padding: const EdgeInsets.only(
                   left: 16, right: 12, top: 10, bottom: 10),

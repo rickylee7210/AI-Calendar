@@ -72,14 +72,19 @@ class _CalendarPickerModalState extends State<CalendarPickerModal> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 8),
-            child: Container(
-              width: 36, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(3),
+          // Drag handle — 下滑关闭
+          GestureDetector(
+            onVerticalDragEnd: (d) {
+              if ((d.primaryVelocity ?? 0) > 200) Navigator.of(context).pop();
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 8),
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
             ),
           ),

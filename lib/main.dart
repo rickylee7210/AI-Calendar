@@ -6,6 +6,7 @@ import 'services/real_audio_recorder_service.dart';
 import 'services/zhipu_asr_service.dart';
 import 'services/zhipu_nlu_service.dart';
 import 'services/calendar_db_service.dart';
+import 'services/notification_service.dart';
 import 'screens/calendar_home_screen.dart';
 
 void main() async {
@@ -20,9 +21,9 @@ void main() async {
   final db = CalendarDbService();
   await db.init();
 
-  // API keys 从 .env 文件读取（flutter run --dart-define-from-file=.env）
+  await NotificationService().init();
+
   const zhipuKey = String.fromEnvironment('ZHIPU_API_KEY');
-  const mifyKey = String.fromEnvironment('MIFY_API_KEY');
 
   final asr = ZhipuAsrService(apiKey: zhipuKey);
   final nlu = ZhipuNluService(apiKey: zhipuKey);

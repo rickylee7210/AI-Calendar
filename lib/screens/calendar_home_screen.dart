@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/calendar_item.dart';
@@ -188,7 +189,11 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                           provider.state == VoiceInputState.processing)
                       ? 1.0
                       : 0.0,
-                  duration: const Duration(milliseconds: 200),
+                  // 出现时淡入 200ms，消失时瞬间
+                  duration: (provider.state == VoiceInputState.recording ||
+                          provider.state == VoiceInputState.processing)
+                      ? const Duration(milliseconds: 200)
+                      : Duration.zero,
                   child: VoiceOverlay(
                     amplitudeStream: provider.amplitudeStream,
                     inCancelZone: provider.inCancelZone,
@@ -298,41 +303,6 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     _loadItems();
   }
 
-  Widget _buildProcessingIndicator() {
-    return Positioned(
-      left: 0, right: 0, bottom: 90,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 14, height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.5,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                '处理中...',
-                style: TextStyle(
-                  fontFamily: 'MiSans', fontSize: 14,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildBottomSection(VoiceInputProvider p) {
     // Show error snackbar
     if (p.state == VoiceInputState.error && p.errorMessage != null) {
@@ -400,100 +370,43 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   }
 
   void _showCreateItem(BuildContext context) {
-    showGeneralDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'CreateItem',
-      barrierColor: Colors.black.withValues(alpha: 0.1),
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (_, anim, __, child) {
-        return SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
-          child: child,
-        );
-      },
-      pageBuilder: (ctx, _, __) {
-        return Stack(
-          children: [
-            // Tap barrier to close
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox.expand(),
-              ),
-            ),
-            // Drawer: top 100dp to bottom
-            Positioned(
-              top: 100,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Material(
-                color: Colors.transparent,
-                child: CreateItemModal(
-                  selectedDate: _selectedDate,
-                  onClose: () => Navigator.pop(ctx),
-                  onSave: (item) async {
-                    Navigator.pop(ctx);
-                    final provider = context.read<VoiceInputProvider>();
-                    await provider.db.insert(item);
-                    _loadItems();
-                  },
-                ),
-              ),
-            ),
-          ],
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height - 100,
+          child: CreateItemModal(
+            selectedDate: _selectedDate,
+            onClose: () => Navigator.pop(ctx),
+            onSave: (item) async {
+              Navigator.pop(ctx);
+              final provider = context.read<VoiceInputProvider>();
+              await provider.db.insert(item);
+              _loadItems();
+            },
+          ),
         );
       },
     );
   }
 
   void _showCalendarPicker(BuildContext context) {
-    showGeneralDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'CalendarPicker',
-      barrierColor: Colors.black.withValues(alpha: 0.2),
-      transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (_, anim, __, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.3),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
-          child: child,
-        );
-      },
-      pageBuilder: (ctx, _, __) {
-        return Stack(
-          children: [
-            // Tap outside to close
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                behavior: HitTestBehavior.opaque,
-                child: const SizedBox.expand(),
-              ),
-            ),
-            // Floating card
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
-              child: Material(
-                color: Colors.transparent,
-                child: CalendarPickerModal(
-                  initialDate: _selectedDate,
-                  onDateSelected: (date) {
-                    Navigator.pop(ctx);
-                    _onDateChanged(date);
-                  },
-                ),
-              ),
-            ),
-          ],
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+          child: CalendarPickerModal(
+            initialDate: _selectedDate,
+            onDateSelected: (date) {
+              Navigator.pop(ctx);
+              _onDateChanged(date);
+            },
+          ),
         );
       },
     );
@@ -554,20 +467,25 @@ class _ScheduleCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-        color: Colors.black.withValues(alpha: 0.05),
+        color: Colors.black.withValues(alpha: 0.03),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          // 左侧色条
-          Container(
-            width: 3,
-            height: 42,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(2),
-              color: item.type == ItemType.reminder
-                  ? const Color(0xFFFF9500)
-                  : const Color(0xFF3482FF),
+          // 虚线圆形勾选框 — 和待办的方块纵向对齐
+          GestureDetector(
+            onTap: onToggle,
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CustomPaint(
+                painter: _DashedCirclePainter(
+                  color: item.isCompleted
+                      ? const Color(0xFF3482FF)
+                      : Colors.black.withValues(alpha: 0.3),
+                  checked: item.isCompleted,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -627,27 +545,62 @@ class _ScheduleCard extends StatelessWidget {
               ),
             ),
           ),
-          // 完成按钮
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: Checkbox(
-              value: item.isCompleted,
-              onChanged: (_) => onToggle(),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-              ),
-              side: BorderSide(
-                color: Colors.black.withValues(alpha: 0.3),
-                width: 1.5,
-              ),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
         ],
       ),
     ),
     ),
     );
   }
+}
+
+/// 虚线圆形 — 日程卡片的勾选框
+class _DashedCirclePainter extends CustomPainter {
+  final Color color;
+  final bool checked;
+  _DashedCirclePainter({required this.color, required this.checked});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 1;
+
+    if (checked) {
+      canvas.drawCircle(center, radius, Paint()..color = color);
+      final checkPath = Path()
+        ..moveTo(size.width * 0.28, size.height * 0.5)
+        ..lineTo(size.width * 0.45, size.height * 0.67)
+        ..lineTo(size.width * 0.72, size.height * 0.35);
+      canvas.drawPath(
+        checkPath,
+        Paint()
+          ..color = Colors.white
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round,
+      );
+    } else {
+      final paint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      const dashCount = 12;
+      const gapRatio = 0.4;
+      final dashAngle = (2 * pi) / dashCount * (1 - gapRatio);
+      final gapAngle = (2 * pi) / dashCount * gapRatio;
+      for (int i = 0; i < dashCount; i++) {
+        final startAngle = i * (dashAngle + gapAngle) - pi / 2;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius),
+          startAngle,
+          dashAngle,
+          false,
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedCirclePainter old) =>
+      old.color != color || old.checked != checked;
 }
