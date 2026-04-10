@@ -20,8 +20,7 @@ class CalendarHomeScreen extends StatefulWidget {
 
 class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   late DateTime _selectedDate;
-  List<CalendarItem> _calendarItems = [];
-  bool _loading = true;
+  final Map<String, List<CalendarItem>> _itemsCache = {};
 
   static const _centerPage = 10000;
   late PageController _contentPageController;
@@ -34,7 +33,6 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     _selectedDate = DateTime.now();
     _baseDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     _contentPageController = PageController(initialPage: _centerPage);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadItems());
   }
 
   @override
@@ -80,27 +78,32 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
 
   String get _monthTitle => '${_selectedDate.month}月';
 
-  Future<void> _loadItems() async {
+  String _dateKey(DateTime date) =>
+      '${date.year}-${date.month}-${date.day}';
+
+  Future<List<CalendarItem>> _loadItemsForDate(DateTime date) async {
+    final key = _dateKey(date);
+    if (_itemsCache.containsKey(key)) return _itemsCache[key]!;
     try {
       final provider = context.read<VoiceInputProvider>();
-      final items = await provider.db.getByDate(_selectedDate);
+      final items = await provider.db.getByDate(date);
       items.sort((a, b) {
         if (a.isCompleted != b.isCompleted) return a.isCompleted ? 1 : -1;
-        // 日程按时间排序
         if (a.dateTime != null && b.dateTime != null) {
           return a.dateTime!.compareTo(b.dateTime!);
         }
         return 0;
       });
-      if (mounted) {
-        setState(() {
-          _calendarItems = items;
-          _loading = false;
-        });
-      }
+      _itemsCache[key] = items;
+      return items;
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      return [];
     }
+  }
+
+  Future<void> _loadItems() async {
+    _itemsCache.remove(_dateKey(_selectedDate));
+    if (mounted) setState(() {});
   }
 
   static const _weekdays = ['一', '二', '三', '四', '五', '六', '日'];
@@ -124,6 +127,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                 Expanded(
                   child: PageView.builder(
                     controller: _contentPageController,
+                    physics: const BouncingScrollPhysics(),
                     onPageChanged: (page) {
                       if (!_isPageAnimating) {
                         final date = _dateForPage(page);
@@ -132,15 +136,42 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                       }
                     },
                     itemBuilder: (_, page) {
-                      // 只有当前页才用已加载的数据，其他页显示空白（翻过去后会加载）
                       final pageDate = _dateForPage(page);
-                      final isCurrent = pageDate.year == _selectedDate.year &&
-                          pageDate.month == _selectedDate.month &&
-                          pageDate.day == _selectedDate.day;
-                      if (isCurrent) {
-                        return _buildTodoList();
-                      }
-                      return const SizedBox.shrink();
+                      return FutureBuilder<List<CalendarItem>>(
+                        future: _loadItemsForDate(pageDate),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          final items = snapshot.data!;
+                          if (items.isEmpty) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 100),
+                                child: Opacity(
+                                  opacity: 0.3,
+                                  child: const Text('暂无事项', style: TextStyle(fontFamily: 'MiSans', fontSize: 15, color: Colors.black)),
+                                ),
+                              ),
+                            );
+                          }
+                          return ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                            itemCount: items.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            itemBuilder: (_, i) {
+                              final ci = items[i];
+                              if (ci.type == ItemType.schedule || ci.type == ItemType.reminder) {
+                                return _ScheduleCard(item: ci, onToggle: () => _toggleItem('${ci.id}'));
+                              }
+                              return TodoCard(
+                                item: TodoItem(id: '${ci.id}', title: ci.title, isCompleted: ci.isCompleted),
+                                onToggle: (id) => _toggleItem(id),
+                              );
+                            },
+                          );
+                        },
+                      );
                     },
                   ),
                 ),
@@ -256,38 +287,6 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
         size: const Size(352, 1),
         painter: _DashedLinePainter(color: Colors.black.withValues(alpha: 0.1)),
       )),
-    );
-  }
-
-  Widget _buildTodoList() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_calendarItems.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 100),
-          child: Opacity(
-            opacity: 0.3,
-            child: const Text('暂无事项', style: TextStyle(fontFamily: 'MiSans', fontSize: 15, color: Colors.black)),
-          ),
-        ),
-      );
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-      itemCount: _calendarItems.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final ci = _calendarItems[i];
-        if (ci.type == ItemType.schedule || ci.type == ItemType.reminder) {
-          return _ScheduleCard(item: ci, onToggle: () => _toggleItem('${ci.id}'));
-        }
-        return TodoCard(
-          item: TodoItem(id: '${ci.id}', title: ci.title, isCompleted: ci.isCompleted),
-          onToggle: (id) => _toggleItem(id),
-        );
-      },
     );
   }
 
