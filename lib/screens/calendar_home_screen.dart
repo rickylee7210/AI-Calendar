@@ -399,98 +399,101 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     ]);
   }
 
-  void _showSpringSheet({
-    required BuildContext context,
-    required Widget Function(BuildContext ctx, VoidCallback close) builder,
-    double barrierOpacity = 0.2,
-    Offset beginOffset = const Offset(0, 1),
-  }) {
+  void _showCreateItem(BuildContext context) {
     showGeneralDialog(
       context: context,
-      barrierDismissible: false,
-      barrierLabel: 'SpringSheet',
-      barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 250),
-      transitionBuilder: (ctx, anim, secondaryAnim, child) {
-        final forwardCurve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
-        final reverseCurve = CurvedAnimation(parent: anim, curve: Curves.easeInCubic);
-        final curvedAnim = anim.status == AnimationStatus.reverse ? reverseCurve : forwardCurve;
-        final slideOffset = Tween<Offset>(begin: beginOffset, end: Offset.zero).animate(curvedAnim);
+      barrierDismissible: true,
+      barrierLabel: 'CreateItem',
+      barrierColor: Colors.black.withValues(alpha: 0.1),
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (_, anim, __, child) {
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+          child: child,
+        );
+      },
+      pageBuilder: (ctx, _, __) {
         return Stack(
           children: [
-            // 遮罩
-            FadeTransition(
-              opacity: anim.drive(Tween(begin: 0.0, end: 1.0)),
+            // Tap barrier to close
+            Positioned.fill(
               child: GestureDetector(
                 onTap: () => Navigator.pop(ctx),
                 behavior: HitTestBehavior.opaque,
-                child: Container(color: Colors.black.withValues(alpha: barrierOpacity)),
+                child: const SizedBox.expand(),
               ),
             ),
-            // 内容
-            SlideTransition(
-              position: slideOffset,
-              child: _DraggableSheet(
-                onClose: () => Navigator.pop(ctx),
-                child: builder(ctx, () => Navigator.pop(ctx)),
+            // Drawer: top 100dp to bottom
+            Positioned(
+              top: 100,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: CreateItemModal(
+                  selectedDate: _selectedDate,
+                  onClose: () => Navigator.pop(ctx),
+                  onSave: (item) async {
+                    Navigator.pop(ctx);
+                    final provider = context.read<VoiceInputProvider>();
+                    await provider.db.insert(item);
+                    _loadItems();
+                  },
+                ),
               ),
             ),
           ],
-        );
-      },
-      pageBuilder: (_, __, ___) => const SizedBox.shrink(),
-    );
-  }
-
-  void _showCreateItem(BuildContext context) {
-    _showSpringSheet(
-      context: context,
-      beginOffset: const Offset(0, 1),
-      barrierOpacity: 0.1,
-      builder: (ctx, close) {
-        return Positioned(
-          top: 100,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Material(
-            color: Colors.transparent,
-            child: CreateItemModal(
-              selectedDate: _selectedDate,
-              onClose: close,
-              onSave: (item) async {
-                close();
-                final provider = context.read<VoiceInputProvider>();
-                await provider.db.insert(item);
-                _loadItems();
-              },
-            ),
-          ),
         );
       },
     );
   }
 
   void _showCalendarPicker(BuildContext context) {
-    _showSpringSheet(
+    showGeneralDialog(
       context: context,
-      beginOffset: const Offset(0, 0.3),
-      barrierOpacity: 0.2,
-      builder: (ctx, close) {
-        return Positioned(
-          left: 16,
-          right: 16,
-          bottom: 16,
-          child: Material(
-            color: Colors.transparent,
-            child: CalendarPickerModal(
-              initialDate: _selectedDate,
-              onDateSelected: (date) {
-                close();
-                _onDateChanged(date);
-              },
+      barrierDismissible: true,
+      barrierLabel: 'CalendarPicker',
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      transitionDuration: const Duration(milliseconds: 300),
+      transitionBuilder: (_, anim, __, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.3),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
+          child: child,
+        );
+      },
+      pageBuilder: (ctx, _, __) {
+        return Stack(
+          children: [
+            // Tap outside to close
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                behavior: HitTestBehavior.opaque,
+                child: const SizedBox.expand(),
+              ),
             ),
-          ),
+            // Floating card
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Material(
+                color: Colors.transparent,
+                child: CalendarPickerModal(
+                  initialDate: _selectedDate,
+                  onDateSelected: (date) {
+                    Navigator.pop(ctx);
+                    _onDateChanged(date);
+                  },
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -514,38 +517,6 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-class _DraggableSheet extends StatefulWidget {
-  final VoidCallback onClose;
-  final Widget child;
-  const _DraggableSheet({required this.onClose, required this.child});
-  @override
-  State<_DraggableSheet> createState() => _DraggableSheetState();
-}
-
-class _DraggableSheetState extends State<_DraggableSheet> {
-  double _dragOffset = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.translate(
-      offset: Offset(0, _dragOffset.clamp(0, double.infinity)),
-      child: GestureDetector(
-        onVerticalDragUpdate: (d) {
-          setState(() => _dragOffset += d.delta.dy);
-        },
-        onVerticalDragEnd: (d) {
-          if (_dragOffset > 100 || (d.primaryVelocity ?? 0) > 500) {
-            widget.onClose();
-          } else {
-            setState(() => _dragOffset = 0);
-          }
-        },
-        child: widget.child,
-      ),
-    );
-  }
 }
 
 /// 日程/提醒卡片 — 显示时间段和提醒信息
@@ -583,97 +554,100 @@ class _ScheduleCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: Colors.black.withValues(alpha: 0.05),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // 左侧色条
-              Container(
-                width: 3,
-                height: 42,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                  color: item.type == ItemType.reminder
-                      ? const Color(0xFFFF9500)
-                      : const Color(0xFF3482FF),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // 内容
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: TextStyle(
-                        fontFamily: 'MiSans',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black.withValues(alpha: 0.87),
-                        decoration: item.isCompleted ? TextDecoration.lineThrough : null,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (_timeRange.isNotEmpty) ...[
-                          Icon(Icons.access_time, size: 13,
-                              color: Colors.black.withValues(alpha: 0.45)),
-                          const SizedBox(width: 4),
-                          Text(
-                            _timeRange,
-                            style: TextStyle(
-                              fontFamily: 'MiSans', fontSize: 13,
-                              color: Colors.black.withValues(alpha: 0.5),
-                            ),
-                          ),
-                        ],
-                        if (_timeRange.isNotEmpty && _reminderText.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('·', style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.black.withValues(alpha: 0.3),
-                            )),
-                          ),
-                        if (_reminderText.isNotEmpty)
-                          Text(
-                            _reminderText,
-                            style: TextStyle(
-                              fontFamily: 'MiSans', fontSize: 13,
-                              color: Colors.black.withValues(alpha: 0.5),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              // 完成按钮
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: Checkbox(
-                  value: item.isCompleted,
-                  onChanged: (_) => onToggle(),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  side: BorderSide(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    width: 1.5,
-                  ),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-              ),
-            ],
-          ),
-        ),
+        color: Colors.black.withValues(alpha: 0.05),
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          // 左侧色条
+          Container(
+            width: 3,
+            height: 42,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(2),
+              color: item.type == ItemType.reminder
+                  ? const Color(0xFFFF9500)
+                  : const Color(0xFF3482FF),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // 内容
+          Expanded(
+            child: Opacity(
+              opacity: item.isCompleted ? 0.4 : 1.0,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      fontFamily: 'MiSans',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black.withValues(alpha: 0.87),
+                      decoration: item.isCompleted ? TextDecoration.lineThrough : null,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (_timeRange.isNotEmpty) ...[
+                        Icon(Icons.access_time, size: 13,
+                            color: Colors.black.withValues(alpha: 0.45)),
+                        const SizedBox(width: 4),
+                        Text(
+                          _timeRange,
+                          style: TextStyle(
+                            fontFamily: 'MiSans', fontSize: 13,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ],
+                      if (_timeRange.isNotEmpty && _reminderText.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text('·', style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.black.withValues(alpha: 0.3),
+                          )),
+                        ),
+                      if (_reminderText.isNotEmpty)
+                        Text(
+                          _reminderText,
+                          style: TextStyle(
+                            fontFamily: 'MiSans', fontSize: 13,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 完成按钮
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: Checkbox(
+              value: item.isCompleted,
+              onChanged: (_) => onToggle(),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
+              side: BorderSide(
+                color: Colors.black.withValues(alpha: 0.3),
+                width: 1.5,
+              ),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ],
+      ),
+    ),
+    ),
     );
   }
 }
