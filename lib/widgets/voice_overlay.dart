@@ -25,6 +25,15 @@ class _VoiceOverlayState extends State<VoiceOverlay>
   double _currentAmp = 0.0;
   late AnimationController _fadeCtl;
 
+  // Spring 入场
+  late AnimationController _springCtl;
+  late Animation<double> _ellipseScale;
+  late Animation<double> _bubbleScale;
+  late Animation<Offset> _bubbleOffset;
+
+  // 取消态颜色过渡
+  late AnimationController _cancelCtl;
+
   @override
   void initState() {
     super.initState();
@@ -32,15 +41,48 @@ class _VoiceOverlayState extends State<VoiceOverlay>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     )..forward();
+
+    _springCtl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    )..forward();
+    _ellipseScale = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _springCtl, curve: Curves.easeOutBack),
+    );
+    _bubbleScale = Tween<double>(begin: 0.9, end: 1.0).animate(
+      CurvedAnimation(parent: _springCtl, curve: Curves.easeOutBack),
+    );
+    _bubbleOffset = Tween<Offset>(
+      begin: const Offset(0, 10),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _springCtl, curve: Curves.easeOutCubic),
+    );
+
+    _cancelCtl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+
     _ampSub = widget.amplitudeStream.listen((amp) {
       setState(() => _currentAmp = amp.clamp(0.0, 1.0));
     });
   }
 
   @override
+  void didUpdateWidget(covariant VoiceOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.inCancelZone != oldWidget.inCancelZone) {
+      widget.inCancelZone ? _cancelCtl.forward() : _cancelCtl.reverse();
+    }
+  }
+
+  @override
   void dispose() {
     _ampSub?.cancel();
     _fadeCtl.dispose();
+    _springCtl.dispose();
+    _cancelCtl.dispose();
     super.dispose();
   }
 
@@ -93,15 +135,21 @@ class _VoiceOverlayState extends State<VoiceOverlay>
             ),
               ),
 
-              // ② 白色椭圆（正常态）/ 红色椭圆（取消态）— 静态，无呼吸动画
+              // ② 白色椭圆（正常态）/ 红色椭圆（取消态）— spring 入场 + 颜色过渡
               Positioned(
                 bottom: ellipseBottom,
                 left: (screenW - ellipseW) / 2,
                 width: ellipseW,
                 height: ellipseH,
-                child: CustomPaint(
-                  painter: _EllipsePainter(isCancel: isCancel),
-                  size: Size.infinite,
+                child: ScaleTransition(
+                  scale: _ellipseScale,
+                  child: AnimatedBuilder(
+                    animation: _cancelCtl,
+                    builder: (_, child) => CustomPaint(
+                      painter: _EllipsePainter(cancelProgress: _cancelCtl.value),
+                      size: Size.infinite,
+                    ),
+                  ),
                 ),
               ),
 
@@ -133,35 +181,46 @@ class _VoiceOverlayState extends State<VoiceOverlay>
                 ),
               ),
 
-              // ④ 白色气泡
+              // ④ 白色气泡 — spring 入场 (scale + translate)
               // Figma: Union 336×74, 白色圆角矩形 + 底部居中弧形尾巴
               Positioned(
                 left: bubbleLeft,
                 bottom: bubbleBottom,
-                child: SizedBox(
-                  width: bubbleW,
-                  height: bubbleH,
-                  child: CustomPaint(
-                    painter: _BubblePainter(),
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: _s(14),
-                        right: _s(14),
-                        bottom: _s(13), // 尾巴高度
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                   '"${widget.hintText}"',
-                       style: TextStyle(
-                            fontFamily: 'MiSans',
-                            fontSize: _s(16),
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xDE000000), // 87% opacity
-                            height: 1.0,
+                child: AnimatedBuilder(
+                  animation: _springCtl,
+                  builder: (_, child) => Transform.translate(
+                    offset: _bubbleOffset.value,
+                    child: Transform.scale(
+                      scale: _bubbleScale.value,
+                      alignment: Alignment.bottomCenter,
+                      child: child,
+                    ),
+                  ),
+                  child: SizedBox(
+                    width: bubbleW,
+                    height: bubbleH,
+                    child: CustomPaint(
+                      painter: _BubblePainter(),
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          left: _s(14),
+                          right: _s(14),
+                          bottom: _s(13), // 尾巴高度
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                     '"${widget.hintText}"',
+                         style: TextStyle(
+                              fontFamily: 'MiSans',
+                              fontSize: _s(16),
+                              fontWeight: FontWeight.w500,
+                              color: const Color(0xDE000000), // 87% opacity
+                              height: 1.0,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -182,78 +241,71 @@ class _VoiceOverlayState extends State<VoiceOverlay>
 // 取消态: 红色渐变
 // ---------------------------------------------------------------------------
 class _EllipsePainter extends CustomPainter {
-  final bool isCancel;
-  _EllipsePainter({required this.isCancel});
+  final double cancelProgress;
+  _EllipsePainter({required this.cancelProgress});
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    final t = cancelProgress;
 
-    if (isCancel) {
-      // 取消态：红色渐变椭圆
-      final fillGradient = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: const [
-          Color(0x8FFA382E), // 56% red
-          Color(0x00FA382E), // 0% red
-        ],
-      );
-      canvas.drawOval(rect, Paint()..shader = fillGradient.createShader(rect));
+    // fill 渐变：白色 ↔ 红色，通过 cancelProgress 插值
+    final fillTop = Color.lerp(
+      const Color(0x8FFFFFFF), // white 56%
+      const Color(0x8FFA382E), // red 56%
+      t,
+    )!;
+    final fillBottom = Color.lerp(
+      const Color(0x00FFFFFF), // white 0%
+      const Color(0x00FA382E), // red 0%
+      t,
+    )!;
+    final fillEnd = Alignment.lerp(
+      const Alignment(0, 0.274),
+      Alignment.bottomCenter,
+      t,
+    )!;
+    final fillGradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: fillEnd,
+      colors: [fillTop, fillBottom],
+    );
+    canvas.drawOval(rect, Paint()..shader = fillGradient.createShader(rect));
 
-      final strokeGradient = LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: const [
-          Color(0x1AFA382E),
-          Color(0xFFFA382E),
-          Color(0x59FA382E),
-        ],
-        stops: const [0.0, 0.51, 1.0],
-      );
-      canvas.drawOval(
-        rect.deflate(1),
-        Paint()
-          ..shader = strokeGradient.createShader(rect)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-    } else {
-      // 正常态：白色渐变椭圆（精确还原 Figma SVG）
-      // fill: white 56% → white 0%, top → y=149/234 ≈ 63.7%
-      final fillGradient = LinearGradient(
-        begin: Alignment.topCenter,
-        end: const Alignment(0, 0.274), // 149/234 mapped to -1..1
-        colors: const [
-          Color(0x8FFFFFFF), // white 56%
-          Color(0x00FFFFFF), // white 0%
-        ],
-      );
-      canvas.drawOval(rect, Paint()..shader = fillGradient.createShader(rect));
-
-      // stroke: white 10% → white 100% → white 35%
-      final strokeGradient = LinearGradient(
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-        colors: const [
-          Color(0x1AFFFFFF), // 10%
-          Color(0xFFFFFFFF), // 100%
-          Color(0x59FFFFFF), // 35%
-        ],
-        stops: const [0.0, 0.51, 1.0],
-      );
-      canvas.drawOval(
-        rect.deflate(1),
-        Paint()
-          ..shader = strokeGradient.createShader(rect)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-    }
+    // stroke 渐变：白色 ↔ 红色
+    final strokeLeft = Color.lerp(
+      const Color(0x1AFFFFFF),
+      const Color(0x1AFA382E),
+      t,
+    )!;
+    final strokeMid = Color.lerp(
+      const Color(0xFFFFFFFF),
+      const Color(0xFFFA382E),
+      t,
+    )!;
+    final strokeRight = Color.lerp(
+      const Color(0x59FFFFFF),
+      const Color(0x59FA382E),
+      t,
+    )!;
+    final strokeGradient = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: [strokeLeft, strokeMid, strokeRight],
+      stops: const [0.0, 0.51, 1.0],
+    );
+    canvas.drawOval(
+      rect.deflate(1),
+      Paint()
+        ..shader = strokeGradient.createShader(rect)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _EllipsePainter old) => old.isCancel != isCancel;
+  bool shouldRepaint(covariant _EllipsePainter old) =>
+      old.cancelProgress != cancelProgress;
 }
 
 // ---------------------------------------------------------------------------
