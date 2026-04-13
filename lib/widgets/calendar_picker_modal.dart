@@ -184,7 +184,7 @@ class _NavButton extends StatelessWidget {
         alignment: Alignment.center,
         child: Transform(
           alignment: Alignment.center,
-          transform: isForward ? Matrix4.identity() : Matrix4.rotationY(3.14159),
+          transform: isForward ? Matrix4.rotationY(3.14159) : Matrix4.identity(),
           child: Opacity(
             opacity: 0.6,
             child: Text(
