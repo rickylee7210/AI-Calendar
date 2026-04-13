@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/calendar_item.dart';
 import '../models/todo_item.dart';
 import '../providers/voice_input_provider.dart';
+import '../services/notification_service.dart';
 import '../widgets/calendar_picker_modal.dart';
 import '../widgets/create_item_modal.dart';
 import '../theme/app_icons.dart';
@@ -22,6 +23,7 @@ class CalendarHomeScreen extends StatefulWidget {
 class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   late DateTime _selectedDate;
   final Map<String, List<CalendarItem>> _itemsCache = {};
+  final Map<String, Future<List<CalendarItem>>> _futureCache = {};
 
   static const _centerPage = 10000;
   late PageController _contentPageController;
@@ -82,28 +84,37 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   String _dateKey(DateTime date) =>
       '${date.year}-${date.month}-${date.day}';
 
-  Future<List<CalendarItem>> _loadItemsForDate(DateTime date) async {
+  Future<List<CalendarItem>> _loadItemsForDate(DateTime date) {
     final key = _dateKey(date);
-    if (_itemsCache.containsKey(key)) return _itemsCache[key]!;
-    try {
-      final provider = context.read<VoiceInputProvider>();
-      final items = await provider.db.getByDate(date);
-      items.sort((a, b) {
-        if (a.isCompleted != b.isCompleted) return a.isCompleted ? 1 : -1;
-        if (a.dateTime != null && b.dateTime != null) {
-          return a.dateTime!.compareTo(b.dateTime!);
+    // 返回缓存的 Future，避免 FutureBuilder rebuild 时重复创建
+    return _futureCache.putIfAbsent(key, () async {
+      try {
+        final provider = context.read<VoiceInputProvider>();
+        final items = await provider.db.getByDate(date);
+        items.sort((a, b) {
+          if (a.isCompleted != b.isCompleted) return a.isCompleted ? 1 : -1;
+          if (a.dateTime != null && b.dateTime != null) {
+            return a.dateTime!.compareTo(b.dateTime!);
+          }
+          return 0;
+        });
+        _itemsCache[key] = items;
+        // 限制缓存大小，超过 14 天清最早的
+        if (_itemsCache.length > 14) {
+          _itemsCache.remove(_itemsCache.keys.first);
+          _futureCache.remove(_futureCache.keys.first);
         }
-        return 0;
-      });
-      _itemsCache[key] = items;
-      return items;
-    } catch (_) {
-      return [];
-    }
+        return items;
+      } catch (_) {
+        return [];
+      }
+    });
   }
 
   Future<void> _loadItems() async {
-    _itemsCache.remove(_dateKey(_selectedDate));
+    final key = _dateKey(_selectedDate);
+    _itemsCache.remove(key);
+    _futureCache.remove(key);
     if (mounted) setState(() {});
   }
 
@@ -300,6 +311,8 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     if (dbId == null) return;
     final provider = context.read<VoiceInputProvider>();
     await provider.db.toggleComplete(dbId);
+    // 完成后取消对应的通知提醒
+    try { await NotificationService().cancelReminder(dbId); } catch (_) {}
     _loadItems();
   }
 
@@ -383,7 +396,13 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
             onSave: (item) async {
               Navigator.pop(ctx);
               final provider = context.read<VoiceInputProvider>();
-              await provider.db.insert(item);
+              final insertedId = await provider.db.insert(item);
+              // 注册通知提醒
+              if (item.type != ItemType.todo && item.dateTime != null) {
+                try {
+                  await NotificationService().scheduleReminder(item.copyWith(id: insertedId));
+                } catch (_) {}
+              }
               _loadItems();
             },
           ),
