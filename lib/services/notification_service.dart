@@ -138,14 +138,6 @@ class NotificationService {
       );
       debugPrint('[Notification] 已注册非精确提醒: id=${item.id}, time=$scheduledDate');
     }
-
-    // 立即发一条确认通知，验证通知通道是否正常
-    await _plugin.show(
-      item.id! + 100000,
-      '提醒已设置',
-      '「${item.title}」将在 $scheduledDate 提醒你',
-      details,
-    );
   }
 
   /// 取消某个事项的提醒
