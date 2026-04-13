@@ -19,7 +19,15 @@ class NotificationService {
     tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidSettings);
+    const iosSettings = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
+    const initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
 
     await _plugin.initialize(initSettings);
 
@@ -32,6 +40,11 @@ class NotificationService {
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestExactAlarmsPermission();
+
+    // 请求 iOS 通知权限
+    await _plugin
+        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
 
     _initialized = true;
   }
@@ -61,7 +74,13 @@ class NotificationService {
       ticker: item.title,
     );
 
-    final details = NotificationDetails(android: androidDetails);
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     final timeStr = '${item.dateTime!.hour.toString().padLeft(2, '0')}:'
         '${item.dateTime!.minute.toString().padLeft(2, '0')}';
