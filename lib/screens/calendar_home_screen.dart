@@ -401,7 +401,9 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
               if (item.type != ItemType.todo && item.dateTime != null) {
                 try {
                   await NotificationService().scheduleReminder(item.copyWith(id: insertedId));
-                } catch (_) {}
+                } catch (e) {
+                  debugPrint('[Notification] 手动创建提醒失败: $e');
+                }
               }
               _loadItems();
             },

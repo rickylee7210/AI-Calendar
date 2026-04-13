@@ -54,6 +54,9 @@ class NotificationService {
     if (item.id == null || item.dateTime == null) return;
     if (item.type == ItemType.todo) return; // 待办不提醒
 
+    // 确保已初始化
+    if (!_initialized) await init();
+
     final reminderTime = item.dateTime!.subtract(
       Duration(minutes: item.reminderMinutes),
     );
@@ -88,18 +91,33 @@ class NotificationService {
         ? '$timeStr 的「${item.title}」将在 ${item.reminderMinutes} 分钟后开始'
         : '「${item.title}」现在开始';
 
-    await _plugin.zonedSchedule(
-      item.id!,
-      'AI日历提醒',
-      body,
-      scheduledDate,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
-
-    debugPrint('[Notification] 已注册提醒: id=${item.id}, time=$scheduledDate, title=${item.title}');
+    // 先尝试精确闹钟，失败则降级到非精确模式
+    try {
+      await _plugin.zonedSchedule(
+        item.id!,
+        'AI日历提醒',
+        body,
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      debugPrint('[Notification] 已注册精确提醒: id=${item.id}, time=$scheduledDate');
+    } catch (e) {
+      debugPrint('[Notification] 精确闹钟失败($e)，降级到非精确模式');
+      await _plugin.zonedSchedule(
+        item.id!,
+        'AI日历提醒',
+        body,
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      debugPrint('[Notification] 已注册非精确提醒: id=${item.id}, time=$scheduledDate');
+    }
   }
 
   /// 取消某个事项的提醒

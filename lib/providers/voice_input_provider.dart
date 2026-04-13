@@ -122,7 +122,9 @@ class VoiceInputProvider extends ChangeNotifier {
         final savedItem = item.copyWith(id: insertedId);
         try {
           await NotificationService().scheduleReminder(savedItem);
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('[Notification] 语音创建提醒失败: $e');
+        }
       }
 
       _lastSaveSuccess = true;
