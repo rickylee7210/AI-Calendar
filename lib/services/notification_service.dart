@@ -33,15 +33,25 @@ class NotificationService {
 
     await _plugin.initialize(initSettings);
 
-    // 请求通知权限 (Android 13+)
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
-
-    // 请求精确闹钟权限 (Android 12+)
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestExactAlarmsPermission();
+    // Android: 显式创建通知通道（不依赖插件自动创建）
+    if (Platform.isAndroid) {
+      final androidPlugin = _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        await androidPlugin.createNotificationChannel(
+          const AndroidNotificationChannel(
+            'calendar_reminder',
+            '日程提醒',
+            description: '日历事项到期提醒',
+            importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        );
+        await androidPlugin.requestNotificationsPermission();
+        await androidPlugin.requestExactAlarmsPermission();
+      }
+    }
 
     // 请求 iOS 通知权限
     await _plugin
