@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -40,12 +41,13 @@ class NotificationService {
       if (androidPlugin != null) {
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
-            'calendar_reminder',
-            '日程提醒',
-            description: '日历事项到期提醒',
-            importance: Importance.high,
+            'calendar_alarm',
+            '日程闹钟',
+            description: '日历事项到期闹钟提醒',
+            importance: Importance.max,
             playSound: true,
             enableVibration: true,
+            audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
         );
         await androidPlugin.requestNotificationsPermission();
@@ -87,13 +89,20 @@ class NotificationService {
     final scheduledDate = tz.TZDateTime.from(reminderTime, tz.local);
 
     final androidDetails = AndroidNotificationDetails(
-      'calendar_reminder',
-      '日程提醒',
-      channelDescription: '日历事项到期提醒',
-      importance: Importance.high,
-      priority: Priority.high,
+      'calendar_alarm',
+      '日程闹钟',
+      channelDescription: '日历事项到期闹钟提醒',
+      importance: Importance.max,
+      priority: Priority.max,
       playSound: true,
       enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
+      ongoing: true,
+      autoCancel: false,
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      visibility: NotificationVisibility.public,
       ticker: item.title,
     );
 
