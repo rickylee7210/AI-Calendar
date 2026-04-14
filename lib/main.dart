@@ -23,8 +23,12 @@ void main() async {
 
   await NotificationService().init();
 
-  // 启动时立即发一条测试通知，验证声音是否正常（调试用）
-  await NotificationService().testNotification();
+  // 启动时立即测试闹钟铃声（调试用）
+  await NotificationService().showAlarmNow(
+    id: 99999,
+    title: '测试闹钟',
+    body: '如果你听到持续响铃，说明闹钟正常。点击通知停止。',
+  );
 
   const zhipuKey = String.fromEnvironment('ZHIPU_API_KEY');
 

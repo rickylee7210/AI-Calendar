@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -14,6 +14,26 @@ class NotificationService {
 
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+
+  static const _alarmChannel = MethodChannel('com.example.ai_calendar/alarm');
+
+  /// 启动原生闹钟铃声（持续响铃+振动）
+  Future<void> startAlarmSound() async {
+    try {
+      await _alarmChannel.invokeMethod('startAlarm');
+    } catch (e) {
+      debugPrint('[Alarm] 启动铃声失败: $e');
+    }
+  }
+
+  /// 停止原生闹钟铃声
+  Future<void> stopAlarmSound() async {
+    try {
+      await _alarmChannel.invokeMethod('stopAlarm');
+    } catch (e) {
+      debugPrint('[Alarm] 停止铃声失败: $e');
+    }
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -32,26 +52,30 @@ class NotificationService {
       iOS: iosSettings,
     );
 
-    await _plugin.initialize(initSettings);
+    // 点击通知时停止铃声并打开 app
+    await _plugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (response) async {
+        await stopAlarmSound();
+      },
+    );
 
-    // Android: 删除旧通道，创建新的闹钟通道
     if (Platform.isAndroid) {
       final androidPlugin = _plugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {
-        // 删除旧通道（Android 通道一旦创建不可变，必须删除重建）
+        // 清理旧通道
         await androidPlugin.deleteNotificationChannel('calendar_reminder');
         await androidPlugin.deleteNotificationChannel('calendar_alarm');
+        // 创建新通道 — 静音通道，声音由原生 Service 播放
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
-            'calendar_alarm',
+            'calendar_alarm_v2',
             '日程闹钟',
             description: '日历事项到期闹钟提醒',
             importance: Importance.max,
-            playSound: true,
-            sound: UriAndroidNotificationSound('content://settings/system/alarm_alert'),
-            enableVibration: true,
-            audioAttributesUsage: AudioAttributesUsage.alarm,
+            playSound: false,
+            enableVibration: false,
           ),
         );
         await androidPlugin.requestNotificationsPermission();
@@ -59,12 +83,12 @@ class NotificationService {
       }
     }
 
-    // 请求 iOS 通知权限
+    // iOS 通知权限
     await _plugin
         .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    // Android: 请求忽略电池优化（小米等国产 ROM 会杀后台闹钟）
+    // Android: 请求忽略电池优化
     if (Platform.isAndroid) {
       final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
       if (!batteryStatus.isGranted) {
@@ -75,20 +99,27 @@ class NotificationService {
     _initialized = true;
   }
 
-  /// 测试通知 — 立即发一条带声音的通知，验证全链路
-  Future<void> testNotification() async {
+  /// 立即显示通知 + 播放闹钟铃声（用于测试和即时提醒）
+  Future<void> showAlarmNow({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
     if (!_initialized) await init();
 
+    // 先取消旧通知，防止自动分组抑制
+    await _plugin.cancelAll();
+
     const androidDetails = AndroidNotificationDetails(
-      'calendar_alarm',
+      'calendar_alarm_v2',
       '日程闹钟',
       channelDescription: '日历事项到期闹钟提醒',
       importance: Importance.max,
       priority: Priority.max,
-      playSound: true,
-      enableVibration: true,
+      ongoing: true,
+      autoCancel: true,
+      fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
       visibility: NotificationVisibility.public,
     );
 
@@ -100,47 +131,38 @@ class NotificationService {
 
     const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    await _plugin.show(
-      99999,
-      '测试闹钟',
-      '如果你听到声音，说明通知响铃正常',
-      details,
-    );
+    await _plugin.show(id, title, body, details);
+
+    // 用原生 Service 播放持续闹钟铃声
+    await startAlarmSound();
   }
 
   /// 为事项注册提醒通知
   Future<void> scheduleReminder(CalendarItem item) async {
     if (item.id == null || item.dateTime == null) return;
-    if (item.type == ItemType.todo) return; // 待办不提醒
+    if (item.type == ItemType.todo) return;
 
-    // 确保已初始化
     if (!_initialized) await init();
 
     final reminderTime = item.dateTime!.subtract(
       Duration(minutes: item.reminderMinutes),
     );
 
-    // 已过期不注册
     if (reminderTime.isBefore(DateTime.now())) return;
 
     final scheduledDate = tz.TZDateTime.from(reminderTime, tz.local);
 
-    final androidDetails = AndroidNotificationDetails(
-      'calendar_alarm',
+    const androidDetails = AndroidNotificationDetails(
+      'calendar_alarm_v2',
       '日程闹钟',
       channelDescription: '日历事项到期闹钟提醒',
       importance: Importance.max,
       priority: Priority.max,
-      playSound: true,
-      enableVibration: true,
-      vibrationPattern: Int64List.fromList([0, 500, 200, 500, 200, 500]),
       ongoing: true,
-      autoCancel: false,
+      autoCancel: true,
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
-      audioAttributesUsage: AudioAttributesUsage.alarm,
       visibility: NotificationVisibility.public,
-      ticker: item.title,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -149,7 +171,7 @@ class NotificationService {
       presentSound: true,
     );
 
-    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     final timeStr = '${item.dateTime!.hour.toString().padLeft(2, '0')}:'
         '${item.dateTime!.minute.toString().padLeft(2, '0')}';
@@ -157,7 +179,6 @@ class NotificationService {
         ? '$timeStr 的「${item.title}」将在 ${item.reminderMinutes} 分钟后开始'
         : '「${item.title}」现在开始';
 
-    // 先尝试精确闹钟，失败则降级到非精确模式
     try {
       await _plugin.zonedSchedule(
         item.id!,
@@ -169,9 +190,9 @@ class NotificationService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
-      debugPrint('[Notification] 已注册精确提醒: id=${item.id}, time=$scheduledDate');
+      debugPrint('[Notification] 已注册提醒: id=${item.id}, time=$scheduledDate');
     } catch (e) {
-      debugPrint('[Notification] 精确闹钟失败($e)，降级到非精确模式');
+      debugPrint('[Notification] 注册失败($e)，降级到非精确模式');
       await _plugin.zonedSchedule(
         item.id!,
         'AI日历提醒',
@@ -182,16 +203,13 @@ class NotificationService {
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,
       );
-      debugPrint('[Notification] 已注册非精确提醒: id=${item.id}, time=$scheduledDate');
     }
   }
 
-  /// 取消某个事项的提醒
   Future<void> cancelReminder(int itemId) async {
     await _plugin.cancel(itemId);
   }
 
-  /// 取消所有提醒
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
   }
