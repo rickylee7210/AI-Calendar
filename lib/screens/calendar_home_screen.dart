@@ -492,21 +492,15 @@ class _ScheduleCard extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 虚线圆形勾选框 — 和待办的方块纵向对齐
-          GestureDetector(
-            onTap: onToggle,
-            child: SizedBox(
-              width: 18,
-              height: 18,
-              child: CustomPaint(
-                painter: _DashedCirclePainter(
-                  color: item.isCompleted
-                      ? const Color(0xFF3482FF)
-                      : Colors.black.withValues(alpha: 0.3),
-                  checked: item.isCompleted,
-                ),
-              ),
+          // 小红点指示器
+          Container(
+            width: 6,
+            height: 6,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFF3B30),
+              shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 12),
