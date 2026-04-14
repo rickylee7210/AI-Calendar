@@ -75,6 +75,39 @@ class NotificationService {
     _initialized = true;
   }
 
+  /// 测试通知 — 立即发一条带声音的通知，验证全链路
+  Future<void> testNotification() async {
+    if (!_initialized) await init();
+
+    const androidDetails = AndroidNotificationDetails(
+      'calendar_alarm',
+      '日程闹钟',
+      channelDescription: '日历事项到期闹钟提醒',
+      importance: Importance.max,
+      priority: Priority.max,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.alarm,
+      audioAttributesUsage: AudioAttributesUsage.alarm,
+      visibility: NotificationVisibility.public,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    await _plugin.show(
+      99999,
+      '测试闹钟',
+      '如果你听到声音，说明通知响铃正常',
+      details,
+    );
+  }
+
   /// 为事项注册提醒通知
   Future<void> scheduleReminder(CalendarItem item) async {
     if (item.id == null || item.dateTime == null) return;

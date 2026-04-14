@@ -23,6 +23,9 @@ void main() async {
 
   await NotificationService().init();
 
+  // 启动时立即发一条测试通知，验证声音是否正常（调试用）
+  await NotificationService().testNotification();
+
   const zhipuKey = String.fromEnvironment('ZHIPU_API_KEY');
 
   final asr = ZhipuAsrService(apiKey: zhipuKey);
