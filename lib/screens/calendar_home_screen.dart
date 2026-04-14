@@ -494,13 +494,18 @@ class _ScheduleCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 小红点指示器
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFF3B30),
-              shape: BoxShape.circle,
+          // 小红点指示器 — 放在 18px 宽容器中居中，与待办 checkbox 对齐
+          SizedBox(
+            width: 18,
+            child: Center(
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFF3B30),
+                  shape: BoxShape.circle,
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 12),
