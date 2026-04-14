@@ -41,6 +41,7 @@ class NotificationService {
       if (androidPlugin != null) {
         // 删除旧通道（Android 通道一旦创建不可变，必须删除重建）
         await androidPlugin.deleteNotificationChannel('calendar_reminder');
+        await androidPlugin.deleteNotificationChannel('calendar_alarm');
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
             'calendar_alarm',
@@ -48,6 +49,7 @@ class NotificationService {
             description: '日历事项到期闹钟提醒',
             importance: Importance.max,
             playSound: true,
+            sound: UriAndroidNotificationSound('content://settings/system/alarm_alert'),
             enableVibration: true,
             audioAttributesUsage: AudioAttributesUsage.alarm,
           ),
