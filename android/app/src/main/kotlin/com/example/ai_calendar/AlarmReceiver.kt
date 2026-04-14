@@ -43,6 +43,12 @@ class AlarmReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // 全屏 Intent（触发 heads-up 桌面弹窗）
+        val fullScreenPending = PendingIntent.getActivity(
+            context, id + 100000, tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         // 发通知
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -54,6 +60,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .setAutoCancel(true)
             .setOngoing(true)
             .setContentIntent(tapPending)
+            .setFullScreenIntent(fullScreenPending, true)
             .build()
         nm.notify(id, notification)
 
