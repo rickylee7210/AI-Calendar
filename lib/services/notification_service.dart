@@ -34,11 +34,13 @@ class NotificationService {
 
     await _plugin.initialize(initSettings);
 
-    // Android: 显式创建通知通道（不依赖插件自动创建）
+    // Android: 删除旧通道，创建新的闹钟通道
     if (Platform.isAndroid) {
       final androidPlugin = _plugin
           .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlugin != null) {
+        // 删除旧通道（Android 通道一旦创建不可变，必须删除重建）
+        await androidPlugin.deleteNotificationChannel('calendar_reminder');
         await androidPlugin.createNotificationChannel(
           const AndroidNotificationChannel(
             'calendar_alarm',
