@@ -351,7 +351,8 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     await provider.db.toggleComplete(dbId);
     // 完成后取消对应的通知提醒
     try { await NotificationService().cancelReminder(dbId); } catch (_) {}
-    _loadItems();
+    // 原地刷新，不重新排序
+    setState(() {});
   }
 
   void _showItemActions(CalendarItem item) {
@@ -686,8 +687,13 @@ class _BatchTodoCard extends StatelessWidget {
                           ),
                         ),
                         child: items[i].isCompleted
-                            ? Icon(Icons.check, size: 12,
-                                color: Colors.black.withValues(alpha: 0.3))
+                            ? CustomPaint(
+                                size: const Size(12, 12),
+                                painter: _CheckPainter(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  strokeWidth: 1.5,
+                                ),
+                              )
                             : null,
                       ),
                     ),
@@ -834,6 +840,29 @@ class _ScheduleCard extends StatelessWidget {
     ),
     );
   }
+}
+
+class _CheckPainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  _CheckPainter({required this.color, required this.strokeWidth});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(size.width * 0.15, size.height * 0.5)
+      ..lineTo(size.width * 0.4, size.height * 0.75)
+      ..lineTo(size.width * 0.85, size.height * 0.25);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// 虚线圆形 — 日程卡片的勾选框
