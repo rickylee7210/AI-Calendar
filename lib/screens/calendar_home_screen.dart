@@ -671,40 +671,39 @@ class _BatchTodoCard extends StatelessWidget {
               onTap: () => onTap(items[i]),
               child: Row(
                   children: [
-                    SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: Checkbox(
-                        value: items[i].isCompleted,
-                        onChanged: (_) => onToggle('${items[i].id}'),
-                        shape: RoundedRectangleBorder(
+                    GestureDetector(
+                      onTap: () => onToggle('${items[i].id}'),
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: items[i].isCompleted
+                                ? Colors.black.withValues(alpha: 0.2)
+                                : Colors.black.withValues(alpha: 0.3),
+                            width: 1.5,
+                          ),
                         ),
-                        side: BorderSide(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        child: items[i].isCompleted
+                            ? Icon(Icons.check, size: 12,
+                                color: Colors.black.withValues(alpha: 0.3))
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: AnimatedOpacity(
-                        opacity: items[i].isCompleted ? 0.4 : 1.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: Text(
+                      child: Text(
                           items[i].title,
                           style: TextStyle(
                             fontFamily: 'MiSans',
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black.withValues(alpha: 0.87),
+                            color: items[i].isCompleted
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : Colors.black.withValues(alpha: 0.87),
                             height: 1.0,
-                            decoration: items[i].isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
                           ),
-                        ),
                       ),
                     ),
                   ],
