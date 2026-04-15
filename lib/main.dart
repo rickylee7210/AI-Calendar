@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/voice_input_provider.dart';
 import 'services/real_audio_recorder_service.dart';
-import 'services/zhipu_asr_service.dart';
-import 'services/zhipu_nlu_service.dart';
+import 'services/mify_asr_service.dart';
+import 'services/mify_nlu_service.dart';
 import 'services/calendar_db_service.dart';
 import 'services/notification_service.dart';
 import 'screens/calendar_home_screen.dart';
@@ -23,10 +23,10 @@ void main() async {
 
   await NotificationService().init();
 
-  const zhipuKey = String.fromEnvironment('ZHIPU_API_KEY');
+  const mifyKey = String.fromEnvironment('MIFY_API_KEY');
 
-  final asr = ZhipuAsrService(apiKey: zhipuKey);
-  final nlu = ZhipuNluService(apiKey: zhipuKey);
+  final asr = MifyAiService(apiKey: mifyKey);
+  final nlu = MifyNluService(apiKey: mifyKey);
 
   runApp(
     ChangeNotifierProvider(

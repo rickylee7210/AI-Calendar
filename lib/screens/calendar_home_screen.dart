@@ -174,11 +174,15 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                             itemBuilder: (_, i) {
                               final ci = items[i];
                               if (ci.type == ItemType.schedule || ci.type == ItemType.reminder) {
-                                return _ScheduleCard(item: ci, onToggle: () => _toggleItem('${ci.id}'));
+                                return GestureDetector(
+                                  onTap: () => _showItemActions(ci),
+                                  child: _ScheduleCard(item: ci, onToggle: () => _toggleItem('${ci.id}')),
+                                );
                               }
                               return TodoCard(
                                 item: TodoItem(id: '${ci.id}', title: ci.title, isCompleted: ci.isCompleted),
                                 onToggle: (id) => _toggleItem(id),
+                                onTap: () => _showItemActions(ci),
                               );
                             },
                           );
@@ -314,6 +318,161 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     // 完成后取消对应的通知提醒
     try { await NotificationService().cancelReminder(dbId); } catch (_) {}
     _loadItems();
+  }
+
+  void _showItemActions(CalendarItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F3F3),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontFamily: 'MiSans', fontSize: 17,
+                    fontWeight: FontWeight.w500, color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _editItem(item);
+                          },
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('编辑', style: TextStyle(
+                              fontFamily: 'MiSans', fontSize: 16,
+                              fontWeight: FontWeight.w500, color: Colors.black,
+                            )),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _confirmDelete(item);
+                          },
+                          child: Container(
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF3B30).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            alignment: Alignment.center,
+                            child: const Text('移除', style: TextStyle(
+                              fontFamily: 'MiSans', fontSize: 16,
+                              fontWeight: FontWeight.w500, color: Color(0xFFFF3B30),
+                            )),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _editItem(CalendarItem item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SizedBox(
+          height: MediaQuery.of(context).size.height - 100,
+          child: CreateItemModal(
+            selectedDate: item.dateTime ?? _selectedDate,
+            editItem: item,
+            onClose: () => Navigator.pop(ctx),
+            onSave: (updated) async {
+              Navigator.pop(ctx);
+              final provider = context.read<VoiceInputProvider>();
+              await provider.db.update(updated);
+              // 重新注册通知
+              if (updated.type != ItemType.todo && updated.dateTime != null && updated.id != null) {
+                try {
+                  await NotificationService().cancelReminder(updated.id!);
+                  await NotificationService().scheduleReminder(updated);
+                } catch (e) {
+                  debugPrint('[Notification] 编辑后重注册提醒失败: $e');
+                }
+              }
+              _loadItems();
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDelete(CalendarItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('确认移除', style: TextStyle(
+          fontFamily: 'MiSans', fontSize: 18, fontWeight: FontWeight.w500,
+        )),
+        content: Text('确定要移除「${item.title}」吗？', style: const TextStyle(
+          fontFamily: 'MiSans', fontSize: 15,
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('取消', style: TextStyle(
+              fontFamily: 'MiSans', color: Colors.black.withValues(alpha: 0.5),
+            )),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (item.id != null) {
+                final provider = context.read<VoiceInputProvider>();
+                await provider.db.delete(item.id!);
+                try { await NotificationService().cancelReminder(item.id!); } catch (_) {}
+                _loadItems();
+              }
+            },
+            child: const Text('移除', style: TextStyle(
+              fontFamily: 'MiSans', color: Color(0xFFFF3B30),
+            )),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildBottomSection(VoiceInputProvider p) {

@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'interfaces.dart';
 
-/// 统一 AI 服务，使用 OpenAI 兼容接口（代理 Claude）
+/// 统一 AI 服务，使用 OpenAI 兼容接口（mimo-v2-omni 多模态 ASR）
 class MifyAiService implements IAsrService {
   final Dio _dio;
   final String _apiKey;
@@ -13,7 +13,7 @@ class MifyAiService implements IAsrService {
 
   MifyAiService({
     required String apiKey,
-    String model = 'ppio/pa/claude-sonnet-4-6',
+    String model = 'xiaomi/mimo-v2-omni',
     Dio? dio,
   })  : _apiKey = apiKey,
         _model = model,
@@ -44,7 +44,7 @@ class MifyAiService implements IAsrService {
       final resp = await _dio.post(
         _endpoint,
         options: Options(headers: {
-          'api-key': _apiKey,
+          'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
         }),
         data: {

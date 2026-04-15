@@ -7,12 +7,14 @@ class CreateItemModal extends StatefulWidget {
   final DateTime selectedDate;
   final ValueChanged<CalendarItem> onSave;
   final VoidCallback? onClose;
+  final CalendarItem? editItem;
 
   const CreateItemModal({
     super.key,
     required this.selectedDate,
     required this.onSave,
     this.onClose,
+    this.editItem,
   });
 
   @override
@@ -32,10 +34,26 @@ class _CreateItemModalState extends State<CreateItemModal> {
   @override
   void initState() {
     super.initState();
-    _date = widget.selectedDate;
-    final now = TimeOfDay.now();
-    _startTime = TimeOfDay(hour: (now.hour + 1) % 24, minute: 0);
-    _endTime = TimeOfDay(hour: (now.hour + 2) % 24, minute: 0);
+    final edit = widget.editItem;
+    if (edit != null) {
+      _titleCtl.text = edit.title;
+      _noteCtl.text = edit.note ?? '';
+      _isTodo = edit.type == ItemType.todo;
+      _date = edit.dateTime ?? widget.selectedDate;
+      _isAllDay = edit.isAllDay;
+      _reminder = edit.reminderMinutes;
+      if (edit.dateTime != null) {
+        _startTime = TimeOfDay(hour: edit.dateTime!.hour, minute: edit.dateTime!.minute);
+      }
+      if (edit.endTime != null) {
+        _endTime = TimeOfDay(hour: edit.endTime!.hour, minute: edit.endTime!.minute);
+      }
+    } else {
+      _date = widget.selectedDate;
+      final now = TimeOfDay.now();
+      _startTime = TimeOfDay(hour: (now.hour + 1) % 24, minute: 0);
+      _endTime = TimeOfDay(hour: (now.hour + 2) % 24, minute: 0);
+    }
   }
 
   @override
@@ -55,12 +73,14 @@ class _CreateItemModalState extends State<CreateItemModal> {
         ? DateTime(_date.year, _date.month, _date.day, _endTime.hour, _endTime.minute)
         : null;
     widget.onSave(CalendarItem(
+      id: widget.editItem?.id,
       title: _titleCtl.text.trim(),
       dateTime: dt,
       endTime: et,
       type: _isTodo ? ItemType.todo : ItemType.schedule,
       reminderMinutes: _isTodo ? 0 : _reminder,
       isAllDay: _isAllDay,
+      isCompleted: widget.editItem?.isCompleted ?? false,
       note: _noteCtl.text.trim().isEmpty ? null : _noteCtl.text.trim(),
     ));
   }
@@ -132,7 +152,7 @@ class _CreateItemModalState extends State<CreateItemModal> {
         children: [
           // Center title
           Text(
-            _isTodo ? '创建待办' : '创建日程',
+            _isTodo ? (widget.editItem != null ? '编辑待办' : '创建待办') : (widget.editItem != null ? '编辑日程' : '创建日程'),
             style: const TextStyle(
               fontFamily: 'MiSans', fontSize: 18,
               fontWeight: FontWeight.w500, color: Colors.black, height: 1.0,

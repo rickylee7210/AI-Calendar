@@ -13,7 +13,7 @@ class MifyNluService implements INluService {
 
   MifyNluService({
     required String apiKey,
-    String model = 'ppio/pa/claude-sonnet-4-6',
+    String model = 'xiaomi/mimo-v2-flash',
     Dio? dio,
   })  : _apiKey = apiKey,
         _model = model,
@@ -97,7 +97,7 @@ class MifyNluService implements INluService {
       final resp = await _dio.post(
         _endpoint,
         options: Options(headers: {
-          'api-key': _apiKey,
+          'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
         }),
         data: {
