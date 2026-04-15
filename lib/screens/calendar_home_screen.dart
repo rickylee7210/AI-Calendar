@@ -661,17 +661,15 @@ class _BatchTodoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         color: Colors.black.withValues(alpha: 0.03),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.only(left: 16, right: 16, top: 18, bottom: 18),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0)
-              Divider(height: 1, thickness: 0.5, color: Colors.black.withValues(alpha: 0.06)),
+              const SizedBox(height: 22),
             GestureDetector(
               onTap: () => onTap(items[i]),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
+              child: Row(
                   children: [
                     SizedBox(
                       width: 18,
@@ -712,7 +710,6 @@ class _BatchTodoCard extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
           ],
         ],
       ),
