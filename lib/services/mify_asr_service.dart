@@ -18,11 +18,10 @@ class MifyAiService implements IAsrService {
   })  : _apiKey = apiKey,
         _model = model,
         _dio = dio ?? Dio(BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 60),
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 30),
         ));
 
-  /// ASR：发送音频 base64 给 Claude，让它转录文字
   @override
   Future<String?> recognize(String audioFilePath) async {
     try {
@@ -34,12 +33,9 @@ class MifyAiService implements IAsrService {
 
       final bytes = await file.readAsBytes();
       final base64Audio = base64Encode(bytes);
-      final fileSize = bytes.length;
-      debugPrint('[ASR] 文件大小: $fileSize bytes, 路径: $audioFilePath');
+      debugPrint('[ASR] 文件大小: ${bytes.length} bytes');
 
-      // 判断音频格式
       final ext = audioFilePath.split('.').last.toLowerCase();
-      final mediaType = ext == 'mp3' ? 'audio/mp3' : 'audio/wav';
 
       final resp = await _dio.post(
         _endpoint,
@@ -49,7 +45,8 @@ class MifyAiService implements IAsrService {
         }),
         data: {
           'model': _model,
-          'max_tokens': 500,
+          'max_tokens': 100,
+          'temperature': 0,
           'messages': [
             {
               'role': 'user',
@@ -63,15 +60,13 @@ class MifyAiService implements IAsrService {
                 },
                 {
                   'type': 'text',
-                  'text': '请将这段音频精确转录为文字，只输出转录结果，不要添加任何解释或标点修改。',
+                  'text': '转录音频，只输出文字。',
                 },
               ],
             },
           ],
         },
       );
-
-      debugPrint('[ASR] 响应: ${resp.data}');
 
       final choices = resp.data['choices'] as List?;
       if (choices == null || choices.isEmpty) return null;
