@@ -167,12 +167,46 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                               ),
                             );
                           }
+                          // 把同一秒创建的多条 todo 合并成组
+                          final grouped = <dynamic>[];
+                          final usedIndices = <int>{};
+                          for (var i = 0; i < items.length; i++) {
+                            if (usedIndices.contains(i)) continue;
+                            final ci = items[i];
+                            if (ci.type == ItemType.todo && ci.createdAt != null) {
+                              // 找同一秒创建的其他 todo
+                              final batch = <CalendarItem>[ci];
+                              for (var j = i + 1; j < items.length; j++) {
+                                if (usedIndices.contains(j)) continue;
+                                final cj = items[j];
+                                if (cj.type == ItemType.todo &&
+                                    cj.createdAt != null &&
+                                    ci.createdAt!.difference(cj.createdAt!).inSeconds.abs() <= 1) {
+                                  batch.add(cj);
+                                  usedIndices.add(j);
+                                }
+                              }
+                              grouped.add(batch.length > 1 ? batch : ci);
+                            } else {
+                              grouped.add(ci);
+                            }
+                            usedIndices.add(i);
+                          }
                           return ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                            itemCount: items.length,
+                            itemCount: grouped.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 10),
                             itemBuilder: (_, i) {
-                              final ci = items[i];
+                              final entry = grouped[i];
+                              // 合并的多条待办
+                              if (entry is List<CalendarItem>) {
+                                return _BatchTodoCard(
+                                  items: entry,
+                                  onToggle: (id) => _toggleItem(id),
+                                  onTap: (ci) => _showItemActions(ci),
+                                );
+                              }
+                              final ci = entry as CalendarItem;
                               if (ci.type == ItemType.schedule || ci.type == ItemType.reminder) {
                                 return GestureDetector(
                                   onTap: () => _showItemActions(ci),
@@ -610,6 +644,80 @@ class _DashedLinePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 批量待办卡片 — 一个卡片内多条可独立勾选的待办
+class _BatchTodoCard extends StatelessWidget {
+  final List<CalendarItem> items;
+  final ValueChanged<String> onToggle;
+  final ValueChanged<CalendarItem> onTap;
+
+  const _BatchTodoCard({required this.items, required this.onToggle, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.black.withValues(alpha: 0.03),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0)
+              Divider(height: 1, thickness: 0.5, color: Colors.black.withValues(alpha: 0.06)),
+            GestureDetector(
+              onTap: () => onTap(items[i]),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Checkbox(
+                        value: items[i].isCompleted,
+                        onChanged: (_) => onToggle('${items[i].id}'),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        side: BorderSide(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          width: 1.5,
+                        ),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AnimatedOpacity(
+                        opacity: items[i].isCompleted ? 0.4 : 1.0,
+                        duration: const Duration(milliseconds: 150),
+                        child: Text(
+                          items[i].title,
+                          style: TextStyle(
+                            fontFamily: 'MiSans',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black.withValues(alpha: 0.87),
+                            height: 1.0,
+                            decoration: items[i].isCompleted
+                                ? TextDecoration.lineThrough
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 /// 日程/提醒卡片 — 显示时间段和提醒信息

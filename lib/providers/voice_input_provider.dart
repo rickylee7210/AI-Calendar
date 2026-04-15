@@ -112,18 +112,39 @@ class VoiceInputProvider extends ChangeNotifier {
       notifyListeners();
 
       final result = await _nlu.parse(text);
+      final fields = result.extractedFields;
 
-      final item = CalendarItem.fromNluResult(result.extractedFields);
-      final insertedId = await _db.insert(item);
-      _lastSavedDate = item.dateTime;
+      // 检查是否有多条待办任务
+      final titles = fields['titles'] as List?;
+      if (titles != null && titles.length > 1) {
+        // 多条待办：逐条创建
+        for (final t in titles) {
+          final todoFields = Map<String, dynamic>.from(fields);
+          todoFields.remove('titles');
+          todoFields['title'] = t as String;
+          todoFields['type'] = 'todo';
+          final item = CalendarItem.fromNluResult(todoFields);
+          await _db.insert(item);
+          _lastSavedDate = item.dateTime;
+        }
+      } else {
+        // 单条任务
+        if (titles != null && titles.length == 1) {
+          fields.remove('titles');
+          fields['title'] = titles[0] as String;
+        }
+        final item = CalendarItem.fromNluResult(fields);
+        final insertedId = await _db.insert(item);
+        _lastSavedDate = item.dateTime;
 
-      // 注册系统通知提醒（失败不阻断保存）
-      if (item.type != ItemType.todo && item.dateTime != null) {
-        final savedItem = item.copyWith(id: insertedId);
-        try {
-          await NotificationService().scheduleReminder(savedItem);
-        } catch (e) {
-          debugPrint('[Notification] 语音创建提醒失败: $e');
+        // 注册系统通知提醒（失败不阻断保存）
+        if (item.type != ItemType.todo && item.dateTime != null) {
+          final savedItem = item.copyWith(id: insertedId);
+          try {
+            await NotificationService().scheduleReminder(savedItem);
+          } catch (e) {
+            debugPrint('[Notification] 语音创建提醒失败: $e');
+          }
         }
       }
 

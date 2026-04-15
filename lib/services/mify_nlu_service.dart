@@ -26,10 +26,12 @@ class MifyNluService implements INluService {
     final now = DateTime.now();
     final today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final weekday = ['一', '二', '三', '四', '五', '六', '日'][now.weekday - 1];
-    return '你是一个日历助手。用户会用自然语言描述一个事项。'
+    return '你是一个日历助手。用户会用自然语言描述一个或多个事项。'
         '请调用 extract_calendar_item 函数提取结构化信息。'
         '规则：'
         'title=事项标题（简洁概括，去掉时间词）；'
+        'titles=当用户一次说了多个待办任务时（如"拿牛奶拿鸡蛋拿面包"、"带伞带钥匙"、"买菜买水果买肉"），'
+        '用titles数组返回每个任务的标题，此时title留空。单个任务时不填titles，只填title。'
         'date=YYYY-MM-DD格式日期；time=HH:mm格式时间；'
         'type=schedule(有任何时间信息的日程)/todo(完全没有时间信息的待办)/reminder(用户明确说"提醒"且有时间)；'
         'reminder=提前提醒分钟数(日程默认15,待办默认0)。'
@@ -51,7 +53,12 @@ class MifyNluService implements INluService {
         'parameters': {
           'type': 'object',
           'properties': {
-            'title': {'type': 'string', 'description': '事项标题'},
+            'title': {'type': 'string', 'description': '单个事项标题'},
+            'titles': {
+              'type': 'array',
+              'items': {'type': 'string'},
+              'description': '多个待办任务标题（如"拿牛奶拿鸡蛋"→["拿牛奶","拿鸡蛋"]）',
+            },
             'date': {'type': 'string', 'description': '日期 YYYY-MM-DD'},
             'time': {'type': 'string', 'description': '时间 HH:mm'},
             'type': {
