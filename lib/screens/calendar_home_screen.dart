@@ -205,36 +205,27 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                             }
                           }
 
-                          // 过滤已完成项（隐藏模式下）
-                          final visible = <dynamic>[];
-                          for (final entry in grouped) {
-                            if (_hideCompleted) {
-                              if (entry is List<CalendarItem>) {
-                                final uncompleted = entry.where((e) => !e.isCompleted).toList();
-                                if (uncompleted.isNotEmpty) {
-                                  visible.add(uncompleted.length > 1 ? uncompleted : uncompleted.first);
-                                }
-                              } else if (entry is CalendarItem) {
-                                if (entry.type != ItemType.todo || !entry.isCompleted) {
-                                  visible.add(entry);
-                                }
-                              }
-                            } else {
-                              visible.add(entry);
-                            }
-                          }
-
                           // +1 给折叠按钮（仅有已完成待办时显示）
                           final showToggle = completedCount > 0;
-                          final listCount = visible.length + (showToggle ? 1 : 0);
+                          final listCount = grouped.length + (showToggle ? 1 : 0);
 
                           return ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                             itemCount: listCount,
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            separatorBuilder: (_, i) {
+                              // 折叠时已完成项高度为0，separator也要跟着隐藏
+                              if (i < grouped.length) {
+                                final entry = grouped[i];
+                                final isCompletedTodo = _isEntryCompleted(entry);
+                                if (_hideCompleted && isCompletedTodo) {
+                                  return const SizedBox.shrink();
+                                }
+                              }
+                              return const SizedBox(height: 10);
+                            },
                             itemBuilder: (_, i) {
                               // 最后一项是折叠按钮
-                              if (showToggle && i == visible.length) {
+                              if (showToggle && i == grouped.length) {
                                 return Center(
                                   child: GestureDetector(
                                     onTap: () {
@@ -280,27 +271,45 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                                   ),
                                 );
                               }
-                              final entry = visible[i];
+                              final entry = grouped[i];
+                              final isCompletedTodo = _isEntryCompleted(entry);
+
+                              Widget card;
                               // 合并的多条待办
                               if (entry is List<CalendarItem>) {
-                                return _BatchTodoCard(
+                                card = _BatchTodoCard(
                                   items: entry,
                                   onToggle: (id, pos) => _toggleItem(id, tapPosition: pos),
                                   onTap: (ci) => _showItemActions(ci),
                                 );
+                              } else {
+                                final ci = entry as CalendarItem;
+                                if (ci.type == ItemType.schedule || ci.type == ItemType.reminder) {
+                                  card = GestureDetector(
+                                    onTap: () => _showItemActions(ci),
+                                    child: _ScheduleCard(item: ci, onToggle: () => _toggleItem('${ci.id}')),
+                                  );
+                                } else {
+                                  card = TodoCard(
+                                    item: TodoItem(id: '${ci.id}', title: ci.title, isCompleted: ci.isCompleted),
+                                    onToggle: (id, pos) => _toggleItem(id, tapPosition: pos),
+                                    onTap: () => _showItemActions(ci),
+                                  );
+                                }
                               }
-                              final ci = entry as CalendarItem;
-                              if (ci.type == ItemType.schedule || ci.type == ItemType.reminder) {
-                                return GestureDetector(
-                                  onTap: () => _showItemActions(ci),
-                                  child: _ScheduleCard(item: ci, onToggle: () => _toggleItem('${ci.id}')),
+
+                              // 已完成待办：用 AnimatedSize 折叠/展开
+                              if (isCompletedTodo) {
+                                return AnimatedSize(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutCubic,
+                                  alignment: Alignment.topCenter,
+                                  child: _hideCompleted
+                                      ? const SizedBox(width: double.infinity, height: 0)
+                                      : card,
                                 );
                               }
-                              return TodoCard(
-                                item: TodoItem(id: '${ci.id}', title: ci.title, isCompleted: ci.isCompleted),
-                                onToggle: (id, pos) => _toggleItem(id, tapPosition: pos),
-                                onTap: () => _showItemActions(ci),
-                              );
+                              return card;
                             },
                           );
                         },
@@ -455,6 +464,16 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
       setState(() => _confettiOrigin = tapPosition);
     }
     _loadItems();
+  }
+
+  bool _isEntryCompleted(dynamic entry) {
+    if (entry is List<CalendarItem>) {
+      return entry.every((e) => e.isCompleted);
+    }
+    if (entry is CalendarItem) {
+      return entry.type == ItemType.todo && entry.isCompleted;
+    }
+    return false;
   }
 
   void _showItemActions(CalendarItem item) {
