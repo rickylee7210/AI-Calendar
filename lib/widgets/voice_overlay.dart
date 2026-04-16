@@ -153,7 +153,7 @@ class _VoiceOverlayState extends State<VoiceOverlay>
                 ),
               ),
 
-              // ③ 提示文字
+              // ③ 提示文字 + 动态音波图标
               Positioned(
                 left: 0,
                 right: 0,
@@ -161,21 +161,35 @@ class _VoiceOverlayState extends State<VoiceOverlay>
                 child: Center(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
-                    child: Text(
-                      isCancel
-                          ? '取消录音'
-                          : widget.isProcessing
-                              ? '处理中...'
-                              : '松手完成录音，上滑取消',
+                    child: Row(
                       key: ValueKey('$isCancel-${widget.isProcessing}'),
-                      style: TextStyle(
-                        fontFamily: 'MiSans',
-                        fontSize: _s(14),
-                        fontWeight: FontWeight.w500,
-                        color: isCancel
-                            ? const Color(0xFFFA382E)
-                            : const Color(0xCC000000),
-                      ),
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (!isCancel && !widget.isProcessing)
+                          Padding(
+                            padding: EdgeInsets.only(right: _s(6)),
+                            child: _SoundWaveIcon(
+                              amplitude: _currentAmp,
+                              size: _s(16),
+                              color: const Color(0xCC000000),
+                            ),
+                          ),
+                        Text(
+                          isCancel
+                              ? '取消录音'
+                              : widget.isProcessing
+                                  ? '处理中...'
+                                  : '松手完成录音，上滑取消',
+                          style: TextStyle(
+                            fontFamily: 'MiSans',
+                            fontSize: _s(14),
+                            fontWeight: FontWeight.w500,
+                            color: isCancel
+                                ? const Color(0xFFFA382E)
+                                : const Color(0xCC000000),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -358,4 +372,57 @@ class _BubblePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 动态音波图标 — 3 条竖线随音量实时变化
+class _SoundWaveIcon extends StatelessWidget {
+  final double amplitude;
+  final double size;
+  final Color color;
+
+  const _SoundWaveIcon({
+    required this.amplitude,
+    required this.size,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final barWidth = size * 0.15;
+    final gap = size * 0.12;
+    final minH = size * 0.25;
+    final maxH = size * 0.9;
+    // 三条线高度：中间最高，两边稍矮，都随 amplitude 变化
+    final h1 = minH + (maxH * 0.6 - minH) * amplitude;
+    final h2 = minH + (maxH - minH) * amplitude;
+    final h3 = minH + (maxH * 0.45 - minH) * amplitude;
+
+    return SizedBox(
+      width: barWidth * 3 + gap * 2,
+      height: size,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _bar(barWidth, h1),
+          SizedBox(width: gap),
+          _bar(barWidth, h2),
+          SizedBox(width: gap),
+          _bar(barWidth, h3),
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(double w, double h) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 80),
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(w),
+      ),
+    );
+  }
 }
