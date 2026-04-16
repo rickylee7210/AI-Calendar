@@ -594,41 +594,14 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     );
   }
 
-  void _confirmDelete(CalendarItem item) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('确认移除', style: TextStyle(
-          fontFamily: 'MiSans', fontSize: 18, fontWeight: FontWeight.w500,
-        )),
-        content: Text('确定要移除「${item.title}」吗？', style: const TextStyle(
-          fontFamily: 'MiSans', fontSize: 15,
-        )),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('取消', style: TextStyle(
-              fontFamily: 'MiSans', color: Colors.black.withValues(alpha: 0.5),
-            )),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              if (item.id != null) {
-                final provider = context.read<VoiceInputProvider>();
-                await provider.db.delete(item.id!);
-                try { await NotificationService().cancelReminder(item.id!); } catch (_) {}
-                _loadItems();
-              }
-            },
-            child: const Text('移除', style: TextStyle(
-              fontFamily: 'MiSans', color: Color(0xFFFF3B30),
-            )),
-          ),
-        ],
-      ),
-    );
+  void _confirmDelete(CalendarItem item) async {
+    hapticHeavy();
+    if (item.id != null) {
+      final provider = context.read<VoiceInputProvider>();
+      await provider.db.delete(item.id!);
+      try { await NotificationService().cancelReminder(item.id!); } catch (_) {}
+      _loadItems();
+    }
   }
 
   Widget _buildBottomSection(VoiceInputProvider p) {
