@@ -235,39 +235,47 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                             itemBuilder: (_, i) {
                               // 最后一项是折叠按钮
                               if (showToggle && i == visible.length) {
-                                return GestureDetector(
-                                  onTap: () {
-                                    hapticTap();
-                                    setState(() => _hideCompleted = !_hideCompleted);
-                                  },
-                                  child: Container(
-                                    height: 44,
-                                    alignment: Alignment.center,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          _hideCompleted
-                                              ? '显示已完成 ($completedCount)'
-                                              : '收起已完成 ($completedCount)',
-                                          style: TextStyle(
-                                            fontFamily: 'MiSans',
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w400,
-                                            color: Colors.black.withValues(alpha: 0.35),
+                                return Center(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      hapticTap();
+                                      setState(() => _hideCompleted = !_hideCompleted);
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 250),
+                                      curve: Curves.easeInOut,
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.04),
+                                        borderRadius: BorderRadius.circular(100),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _hideCompleted
+                                                ? '显示已完成 ($completedCount)'
+                                                : '收起已完成 ($completedCount)',
+                                            style: TextStyle(
+                                              fontFamily: 'MiSans',
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w400,
+                                              color: Colors.black.withValues(alpha: 0.35),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        AnimatedRotation(
-                                          turns: _hideCompleted ? 0 : 0.5,
-                                          duration: const Duration(milliseconds: 200),
-                                          child: Icon(
-                                            Icons.keyboard_arrow_down,
-                                            size: 16,
-                                            color: Colors.black.withValues(alpha: 0.35),
+                                          const SizedBox(width: 4),
+                                          AnimatedRotation(
+                                            turns: _hideCompleted ? 0 : 0.5,
+                                            duration: const Duration(milliseconds: 300),
+                                            curve: Curves.easeOutCubic,
+                                            child: Icon(
+                                              Icons.keyboard_arrow_down,
+                                              size: 16,
+                                              color: Colors.black.withValues(alpha: 0.35),
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
