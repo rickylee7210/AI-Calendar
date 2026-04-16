@@ -698,11 +698,10 @@ class _BatchTodoCard extends StatelessWidget {
                         hapticHeavy();
                         onToggle('${items[i].id}', details.globalPosition);
                       },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
                         child: Container(
-                          width: 18,
-                          height: 18,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
@@ -724,7 +723,7 @@ class _BatchTodoCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                           items[i].title,

@@ -65,11 +65,10 @@ class _TodoCardState extends State<TodoCard>
                     hapticHeavy();
                     widget.onToggle(widget.item.id, details.globalPosition);
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
                     child: Container(
-                      width: 18,
-                      height: 18,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
@@ -91,7 +90,7 @@ class _TodoCardState extends State<TodoCard>
                     ),
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     widget.item.title,
