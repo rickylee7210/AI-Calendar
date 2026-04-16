@@ -3,7 +3,7 @@ import '../models/todo_item.dart';
 
 class TodoCard extends StatefulWidget {
   final TodoItem item;
-  final ValueChanged<String> onToggle;
+  final void Function(String id, Offset globalPosition) onToggle;
   final VoidCallback? onTap;
 
   const TodoCard({super.key, required this.item, required this.onToggle, this.onTap});
@@ -60,7 +60,7 @@ class _TodoCardState extends State<TodoCard>
               children: [
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => widget.onToggle(widget.item.id),
+                  onTapUp: (details) => widget.onToggle(widget.item.id, details.globalPosition),
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Container(

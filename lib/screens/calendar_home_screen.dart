@@ -12,6 +12,7 @@ import '../widgets/week_strip.dart';
 import '../widgets/todo_card.dart';
 import '../widgets/bottom_action_bar.dart';
 import '../widgets/voice_overlay.dart';
+import '../widgets/confetti_overlay.dart';
 
 class CalendarHomeScreen extends StatefulWidget {
   const CalendarHomeScreen({super.key});
@@ -29,6 +30,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   late PageController _contentPageController;
   late DateTime _baseDate; // 基准日期（初始化时的今天）
   bool _isPageAnimating = false; // 防止 PageView 和 _onDateChanged 循环触发
+  Offset? _confettiOrigin; // 撒花动画起点
 
   @override
   void initState() {
@@ -92,7 +94,6 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
         final provider = context.read<VoiceInputProvider>();
         final items = await provider.db.getByDate(date);
         items.sort((a, b) {
-          if (a.isCompleted != b.isCompleted) return a.isCompleted ? 1 : -1;
           if (a.dateTime != null && b.dateTime != null) {
             return a.dateTime!.compareTo(b.dateTime!);
           }
@@ -202,7 +203,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                               if (entry is List<CalendarItem>) {
                                 return _BatchTodoCard(
                                   items: entry,
-                                  onToggle: (id) => _toggleItem(id),
+                                  onToggle: (id, pos) => _toggleItem(id, tapPosition: pos),
                                   onTap: (ci) => _showItemActions(ci),
                                 );
                               }
@@ -215,7 +216,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                               }
                               return TodoCard(
                                 item: TodoItem(id: '${ci.id}', title: ci.title, isCompleted: ci.isCompleted),
-                                onToggle: (id) => _toggleItem(id),
+                                onToggle: (id, pos) => _toggleItem(id, tapPosition: pos),
                                 onTap: () => _showItemActions(ci),
                               );
                             },
@@ -227,6 +228,16 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                 ),
               ],
             ),
+            // 撒花动画 overlay
+            if (_confettiOrigin != null)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ConfettiOverlay(
+                    origin: _confettiOrigin!,
+                    onComplete: () => setState(() => _confettiOrigin = null),
+                  ),
+                ),
+              ),
             // 录音态/处理态 overlay — 始终在树中，用 Opacity 控制显隐
             // recording: 显示"正在聆听..."，processing: 显示识别结果
             Positioned.fill(
@@ -344,13 +355,23 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     );
   }
 
-  Future<void> _toggleItem(String id) async {
+  Future<void> _toggleItem(String id, {Offset? tapPosition}) async {
     final dbId = int.tryParse(id);
     if (dbId == null) return;
     final provider = context.read<VoiceInputProvider>();
+    // 检查当前是否未完成（即将变为已完成）
+    final key = _dateKey(_selectedDate);
+    final items = _itemsCache[key];
+    final item = items?.where((i) => i.id == dbId).firstOrNull;
+    final wasCompleted = item?.isCompleted ?? false;
+
     await provider.db.toggleComplete(dbId);
-    // 完成后取消对应的通知提醒
     try { await NotificationService().cancelReminder(dbId); } catch (_) {}
+
+    // 从未完成→已完成时触发撒花
+    if (!wasCompleted && tapPosition != null) {
+      setState(() => _confettiOrigin = tapPosition);
+    }
     _loadItems();
   }
 
@@ -649,8 +670,7 @@ class _DashedLinePainter extends CustomPainter {
 /// 批量待办卡片 — 一个卡片内多条可独立勾选的待办
 class _BatchTodoCard extends StatelessWidget {
   final List<CalendarItem> items;
-  final ValueChanged<String> onToggle;
-  final ValueChanged<CalendarItem> onTap;
+  final void Function(String id, Offset globalPosition) onToggle;  final ValueChanged<CalendarItem> onTap;
 
   const _BatchTodoCard({required this.items, required this.onToggle, required this.onTap});
 
@@ -673,7 +693,7 @@ class _BatchTodoCard extends StatelessWidget {
                   children: [
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => onToggle('${items[i].id}'),
+                      onTapUp: (details) => onToggle('${items[i].id}', details.globalPosition),
                       child: Padding(
                         padding: const EdgeInsets.all(8),
                         child: Container(
