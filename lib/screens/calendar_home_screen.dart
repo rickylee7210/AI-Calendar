@@ -351,8 +351,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
     await provider.db.toggleComplete(dbId);
     // 完成后取消对应的通知提醒
     try { await NotificationService().cancelReminder(dbId); } catch (_) {}
-    // 原地刷新，不重新排序
-    setState(() {});
+    _loadItems();
   }
 
   void _showItemActions(CalendarItem item) {
