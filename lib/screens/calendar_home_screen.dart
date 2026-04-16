@@ -673,31 +673,35 @@ class _BatchTodoCard extends StatelessWidget {
               child: Row(
                   children: [
                     GestureDetector(
+                      behavior: HitTestBehavior.opaque,
                       onTap: () => onToggle('${items[i].id}'),
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: items[i].isCompleted
-                                ? Colors.black.withValues(alpha: 0.2)
-                                : Colors.black.withValues(alpha: 0.3),
-                            width: 1.5,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: items[i].isCompleted
+                                  ? Colors.black.withValues(alpha: 0.2)
+                                  : Colors.black.withValues(alpha: 0.3),
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        child: items[i].isCompleted
-                            ? CustomPaint(
-                                size: const Size(12, 12),
-                                painter: _CheckPainter(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  strokeWidth: 1.5,
+                          child: items[i].isCompleted
+                              ? CustomPaint(
+                                  size: const Size(12, 12),
+                                  painter: _CheckPainter(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    strokeWidth: 1.5,
                                 ),
                               )
                             : null,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                           items[i].title,

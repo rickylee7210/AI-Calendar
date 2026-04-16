@@ -59,31 +59,35 @@ class _TodoCardState extends State<TodoCard>
             child: Row(
               children: [
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => widget.onToggle(widget.item.id),
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: done
-                            ? Colors.black.withValues(alpha: 0.2)
-                            : Colors.black.withValues(alpha: 0.3),
-                        width: 1.5,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Container(
+                      width: 18,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: done
+                              ? Colors.black.withValues(alpha: 0.2)
+                              : Colors.black.withValues(alpha: 0.3),
+                          width: 1.5,
+                        ),
                       ),
+                      child: done
+                          ? CustomPaint(
+                              size: const Size(12, 12),
+                              painter: _CheckPainter(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                strokeWidth: 1.5,
+                              ),
+                            )
+                          : null,
                     ),
-                    child: done
-                        ? CustomPaint(
-                            size: const Size(12, 12),
-                            painter: _CheckPainter(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              strokeWidth: 1.5,
-                            ),
-                          )
-                        : null,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 4),
                 Expanded(
                   child: Text(
                     widget.item.title,
