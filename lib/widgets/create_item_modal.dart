@@ -94,7 +94,7 @@ class _CreateItemModalState extends State<CreateItemModal> {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF3F3F3),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(

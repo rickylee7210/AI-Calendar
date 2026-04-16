@@ -68,7 +68,7 @@ class _CalendarPickerModalState extends State<CalendarPickerModal> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(38),
+        borderRadius: BorderRadius.circular(40),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

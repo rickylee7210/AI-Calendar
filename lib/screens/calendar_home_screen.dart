@@ -485,7 +485,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           decoration: BoxDecoration(
             color: const Color(0xFFF3F3F3),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(40),
           ),
           child: SafeArea(
             top: false,
