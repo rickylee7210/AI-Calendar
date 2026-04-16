@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/calendar_item.dart';
 import '../services/interfaces.dart';
+import '../utils/haptic.dart';
 import '../services/connectivity_service.dart';
 import '../services/notification_service.dart';
 
@@ -69,7 +70,10 @@ class VoiceInputProvider extends ChangeNotifier {
   void updateFingerPosition(double verticalDelta) {
     final wasInZone = _inCancelZone;
     _inCancelZone = verticalDelta < -100;
-    if (_inCancelZone != wasInZone) notifyListeners();
+    if (_inCancelZone != wasInZone) {
+      if (_inCancelZone) hapticHeavy();
+      notifyListeners();
+    }
   }
 
   /// 松手后一步到位：ASR → NLU → 保存
