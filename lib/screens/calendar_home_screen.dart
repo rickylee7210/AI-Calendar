@@ -32,6 +32,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   late DateTime _baseDate; // 基准日期（初始化时的今天）
   bool _isPageAnimating = false; // 防止 PageView 和 _onDateChanged 循环触发
   Offset? _confettiOrigin; // 撒花动画起点
+  bool _hideCompleted = false; // 是否隐藏已完成待办
 
   @override
   void initState() {
@@ -176,7 +177,6 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                             if (usedIndices.contains(i)) continue;
                             final ci = items[i];
                             if (ci.type == ItemType.todo && ci.createdAt != null) {
-                              // 找同一秒创建的其他 todo
                               final batch = <CalendarItem>[ci];
                               for (var j = i + 1; j < items.length; j++) {
                                 if (usedIndices.contains(j)) continue;
@@ -194,12 +194,85 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
                             }
                             usedIndices.add(i);
                           }
+
+                          // 统计已完成待办数量
+                          int completedCount = 0;
+                          for (final entry in grouped) {
+                            if (entry is List<CalendarItem>) {
+                              completedCount += entry.where((e) => e.isCompleted).length;
+                            } else if (entry is CalendarItem && entry.type == ItemType.todo && entry.isCompleted) {
+                              completedCount++;
+                            }
+                          }
+
+                          // 过滤已完成项（隐藏模式下）
+                          final visible = <dynamic>[];
+                          for (final entry in grouped) {
+                            if (_hideCompleted) {
+                              if (entry is List<CalendarItem>) {
+                                final uncompleted = entry.where((e) => !e.isCompleted).toList();
+                                if (uncompleted.isNotEmpty) {
+                                  visible.add(uncompleted.length > 1 ? uncompleted : uncompleted.first);
+                                }
+                              } else if (entry is CalendarItem) {
+                                if (entry.type != ItemType.todo || !entry.isCompleted) {
+                                  visible.add(entry);
+                                }
+                              }
+                            } else {
+                              visible.add(entry);
+                            }
+                          }
+
+                          // +1 给折叠按钮（仅有已完成待办时显示）
+                          final showToggle = completedCount > 0;
+                          final listCount = visible.length + (showToggle ? 1 : 0);
+
                           return ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                            itemCount: grouped.length,
+                            itemCount: listCount,
                             separatorBuilder: (_, __) => const SizedBox(height: 10),
                             itemBuilder: (_, i) {
-                              final entry = grouped[i];
+                              // 最后一项是折叠按钮
+                              if (showToggle && i == visible.length) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    hapticTap();
+                                    setState(() => _hideCompleted = !_hideCompleted);
+                                  },
+                                  child: Container(
+                                    height: 44,
+                                    alignment: Alignment.center,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _hideCompleted
+                                              ? '显示已完成 ($completedCount)'
+                                              : '收起已完成 ($completedCount)',
+                                          style: TextStyle(
+                                            fontFamily: 'MiSans',
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w400,
+                                            color: Colors.black.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        AnimatedRotation(
+                                          turns: _hideCompleted ? 0 : 0.5,
+                                          duration: const Duration(milliseconds: 200),
+                                          child: Icon(
+                                            Icons.keyboard_arrow_down,
+                                            size: 16,
+                                            color: Colors.black.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                              final entry = visible[i];
                               // 合并的多条待办
                               if (entry is List<CalendarItem>) {
                                 return _BatchTodoCard(
