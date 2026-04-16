@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/calendar_day.dart';
 import '../services/calendar_data_service.dart';
+import '../utils/haptic.dart';
 import 'day_cell.dart';
 
 class WeekStrip extends StatefulWidget {
@@ -105,7 +106,7 @@ class _WeekStripState extends State<WeekStrip> {
                     isWeekend: d.isWeekend,
                     isToday: isToday,
                   ),
-                  onTap: () => widget.onDateChanged(cellDate),
+                  onTap: () { hapticTap(); widget.onDateChanged(cellDate); },
                 );
               }),
             ),

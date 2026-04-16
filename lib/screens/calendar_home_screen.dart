@@ -13,6 +13,7 @@ import '../widgets/todo_card.dart';
 import '../widgets/bottom_action_bar.dart';
 import '../widgets/voice_overlay.dart';
 import '../widgets/confetti_overlay.dart';
+import '../utils/haptic.dart';
 
 class CalendarHomeScreen extends StatefulWidget {
   const CalendarHomeScreen({super.key});
@@ -693,7 +694,10 @@ class _BatchTodoCard extends StatelessWidget {
                   children: [
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTapUp: (details) => onToggle('${items[i].id}', details.globalPosition),
+                      onTapUp: (details) {
+                        hapticHeavy();
+                        onToggle('${items[i].id}', details.globalPosition);
+                      },
                       child: Padding(
                         padding: const EdgeInsets.all(8),
                         child: Container(

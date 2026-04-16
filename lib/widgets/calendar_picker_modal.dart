@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/calendar_data_service.dart';
 import '../theme/app_icons.dart';
+import '../utils/haptic.dart';
 import 'month_grid.dart';
 
 class CalendarPickerModal extends StatefulWidget {
@@ -174,7 +175,7 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () { hapticTap(); onTap(); },
       child: Container(
         width: 35, height: 35,
         decoration: BoxDecoration(

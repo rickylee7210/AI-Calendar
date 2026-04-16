@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_icons.dart';
+import '../utils/haptic.dart';
 
 class BottomActionBar extends StatelessWidget {
   final VoidCallback onKeyboardTap;
@@ -111,9 +112,13 @@ class _GlassButtonState extends State<_GlassButton> {
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
+      onTap: () {
+        hapticTap();
+        widget.onTap?.call();
+      },
       onLongPressStart: widget.onLongPressStart != null
           ? (details) {
+              hapticHeavy();
               _startY = details.globalPosition.dy;
               widget.onLongPressStart!();
             }

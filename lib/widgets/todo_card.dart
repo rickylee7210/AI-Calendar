@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/todo_item.dart';
+import '../utils/haptic.dart';
 
 class TodoCard extends StatefulWidget {
   final TodoItem item;
@@ -60,7 +61,10 @@ class _TodoCardState extends State<TodoCard>
               children: [
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) => widget.onToggle(widget.item.id, details.globalPosition),
+                  onTapUp: (details) {
+                    hapticHeavy();
+                    widget.onToggle(widget.item.id, details.globalPosition);
+                  },
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Container(

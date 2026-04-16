@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/calendar_item.dart';
 import '../theme/app_icons.dart';
+import '../utils/haptic.dart';
 
 class CreateItemModal extends StatefulWidget {
   final DateTime selectedDate;
@@ -66,6 +67,7 @@ class _CreateItemModalState extends State<CreateItemModal> {
   bool get _canSave => _titleCtl.text.trim().isNotEmpty;
 
   void _save() {
+    hapticHeavy();
     if (!_canSave) return;
     final dt = _isTodo ? _date
         : DateTime(_date.year, _date.month, _date.day, _startTime.hour, _startTime.minute);
@@ -225,7 +227,7 @@ class _CreateItemModalState extends State<CreateItemModal> {
 
   Widget _segmentTab(String label, bool selected, VoidCallback onTap) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () { hapticTap(); onTap(); },
       child: Container(
         height: 32,
         alignment: Alignment.center,
