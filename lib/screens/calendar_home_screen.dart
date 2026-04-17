@@ -22,7 +22,8 @@ class CalendarHomeScreen extends StatefulWidget {
   State<CalendarHomeScreen> createState() => _CalendarHomeScreenState();
 }
 
-class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
+class _CalendarHomeScreenState extends State<CalendarHomeScreen>
+    with WidgetsBindingObserver {
   late DateTime _selectedDate;
   final Map<String, List<CalendarItem>> _itemsCache = {};
   final Map<String, Future<List<CalendarItem>>> _futureCache = {};
@@ -37,6 +38,7 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedDate = DateTime.now();
     _baseDate = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
     _contentPageController = PageController(initialPage: _centerPage);
@@ -44,8 +46,23 @@ class _CalendarHomeScreenState extends State<CalendarHomeScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _contentPageController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      if (todayDate != _baseDate) {
+        _baseDate = todayDate;
+        _itemsCache.clear();
+        _futureCache.clear();
+        _onDateChanged(today);
+      }
+    }
   }
 
   DateTime _dateForPage(int page) {
